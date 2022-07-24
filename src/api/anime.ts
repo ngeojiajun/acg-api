@@ -5,7 +5,7 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { asAnimeEntry, asPeople } from "../definitions/converters";
+import { People } from "../definitions/core";
 import { nonExistantRoute } from "./commonUtils";
 
 export default class AnimeApi {
@@ -41,7 +41,7 @@ export default class AnimeApi {
     //now try to resolve the pointer at author
     for (const key of decoded.author) {
       //search the db for it
-      let resolved = this.#database.getData("PERSON", key, asPeople);
+      let resolved = this.#database.getData<People>("PERSON", key);
       if (!resolved) {
         console.error(
           "Refusing to convert to AnimeEntry because of the dangling pointer"
@@ -55,7 +55,7 @@ export default class AnimeApi {
     //now publisher's turn
     for (const key of decoded.publisher) {
       //search the db for it
-      let resolved = this.#database.getData("PERSON", key, asPeople);
+      let resolved = this.#database.getData<People>("PERSON", key);
       if (!resolved) {
         console.error(
           "Refusing to convert to AnimeEntry because of the dangling pointer"

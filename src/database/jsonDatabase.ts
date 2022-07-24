@@ -62,7 +62,6 @@ export default class JsonDatabase implements IDatabase {
     converter?: ((data: any, db: IDatabase) => T | null) | undefined
   ): T | null {
     if (!converter) {
-      allowIfNotProd("Converter must be provided in runtime");
       converter = (data: any) => data as T;
     }
     let data: Cached<KeyedEntry> | null = this.#getTable(type);
