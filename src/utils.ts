@@ -1,0 +1,17 @@
+/**
+ * A utility function to trap development only behavior
+ * @param message Error message to throw when it is triggered in production mode
+ */
+export function allowIfNotProd(
+  message: string = "Operation not allowed in production mode"
+): void | never {
+  if (process.env.PRODUCTION) {
+    throw new NotAllowedInProductionError(message);
+  } else {
+    console.warn("Warning: this behavior is only allowed in development");
+    console.warn(`From caller: ${message}`);
+  }
+}
+
+//Never meant to be exported
+class NotAllowedInProductionError extends Error {}
