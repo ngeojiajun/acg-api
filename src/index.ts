@@ -9,7 +9,7 @@ import { IDatabase } from "./database/database";
 import JsonDatabase from "./database/jsonDatabase";
 
 //load the data
-let db: IDatabase = new JsonDatabase("./data/animes.json");
+let db: IDatabase = new JsonDatabase("./data/");
 db.init();
 
 const app: Application = express();
