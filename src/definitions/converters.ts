@@ -2,7 +2,14 @@
  * Serialization related to anime.d.ts
  */
 import { AnimeEntry } from "./anime";
-import { BilingualKeyedEntry, Category, KeyedEntry, People } from "./core";
+import {
+  BilingualKeyedEntry,
+  Category,
+  Character,
+  Gender,
+  KeyedEntry,
+  People,
+} from "./core";
 
 /**
  * Given the `table` try convert it into `KeyedEntry`
@@ -74,6 +81,25 @@ export function asAnimeEntry(table: any): AnimeEntry | null {
   return table;
 }
 
+export function asCharacter(table: any): Character | null {
+  if (!asBilingualKeyEntry(table)) {
+    return null;
+  }
+  if (
+    typeof table.gender !== "string" ||
+    !asEnumeration<Gender>(table.gender, ["male", "female"])
+  ) {
+    return null;
+  }
+  if (
+    !asKeyedEntry(table.presentOn) ||
+    typeof table.presentOn.type !== "string"
+  ) {
+    return null;
+  }
+  return table;
+}
+
 /**
  * Try to parse the `table` as array of something
  * @param table data to parse
@@ -97,4 +123,21 @@ export function asArrayOf<T>(
     }
   }
   return convertedArray;
+}
+
+/**
+ * Provided `value` test it against the `valid_vals`
+ * @param value
+ * @param valid_vals
+ */
+export function asEnumeration<T extends string>(
+  value: string,
+  valid_vals: T[]
+): T | null {
+  for (const element of valid_vals) {
+    if (value === element) {
+      return element;
+    }
+  }
+  return null;
 }

@@ -4,8 +4,8 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { asArrayOf, asPeople } from "../definitions/converters";
-import { KeyedEntry, People } from "../definitions/core";
+import { asArrayOf, asCharacter, asPeople } from "../definitions/converters";
+import { Character, KeyedEntry, People } from "../definitions/core";
 import { Cached, findEntry, makeCached } from "../utilities/cached";
 import { allowIfNotProd } from "../utils";
 import { DatabaseTypes, IDatabase } from "./database";
@@ -22,6 +22,7 @@ type InternalParsedMap = {
    * The person table - this is unrelated to the characters in animes
    */
   person?: Cached<People>;
+  characters?: Cached<Character>;
 };
 
 /**
@@ -41,6 +42,10 @@ export default class JsonDatabase implements IDatabase {
   init() {
     this.#loadAndRegister(path.join(this.directory, "animes.json"), "ANIME");
     this.#loadAndRegister(path.join(this.directory, "persons.json"), "PERSON");
+    this.#loadAndRegister(
+      path.join(this.directory, "characters.json"),
+      "CHARACTER"
+    );
   }
   getData<T>(
     type: DatabaseTypes,
@@ -60,7 +65,7 @@ export default class JsonDatabase implements IDatabase {
     }
     return null;
   }
-  *iterateKeys(type: DatabaseTypes): Generator<number> {
+  *iterateKeys(type: DatabaseTypes, extras?: any): Generator<number> {
     let data: Cached<KeyedEntry> | null = this.#getTable(type);
     if (!data) {
       throw new Error("Fatal error: table not registered yet. bug?");
@@ -71,6 +76,9 @@ export default class JsonDatabase implements IDatabase {
     for (let i = 0; i < data.entries.length; i++) {
       let id = data.entries[i].id;
       data.cache[id] = i;
+      if (typeof extras === "function" && !extras(data.entries[i])) {
+        continue;
+      }
       yield id;
     }
   }
@@ -106,10 +114,11 @@ export default class JsonDatabase implements IDatabase {
         }
         return this.#database.person;
       case "CHARACTER":
-        allowIfNotProd("Not implemented yet");
-        break;
+        if (!this.#database.characters) {
+          return null;
+        }
+        return this.#database.characters;
     }
-    return null;
   }
   /**
    * Validate and register the data as compatible with certain schema
@@ -148,7 +157,19 @@ export default class JsonDatabase implements IDatabase {
         }
         break;
       case "CHARACTER":
-        allowIfNotProd("Not implemented yet");
+        {
+          let parsed: Character[] | null = asArrayOf<Character>(
+            table,
+            asCharacter
+          );
+          if (!parsed) {
+            throw new Error(
+              `JSONDatabase: detected schema violation when parsing table for inclusion into CHARACTER`
+            );
+          }
+          //construct the stuffs
+          this.#database.characters = makeCached(parsed);
+        }
         break;
     }
   }

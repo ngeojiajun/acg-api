@@ -5,7 +5,7 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { People } from "../definitions/core";
+import { Character, People } from "../definitions/core";
 import { nonExistantRoute } from "./commonUtils";
 
 export default class AnimeApi {
@@ -16,6 +16,7 @@ export default class AnimeApi {
   asApplication(): Application {
     const app = express();
     app.get("/all", this.#getAnimes.bind(this));
+    app.use("/:id/characters", this.#getAnimeCharactersById.bind(this));
     app.use("/:id", this.#getAnimeById.bind(this));
     app.use(nonExistantRoute);
     return app;
@@ -102,22 +103,17 @@ export default class AnimeApi {
    * @route /:id
    */
   #getAnimeById(request: Request, response: Response, next: NextFunction) {
-    const sendEntryNotFound = () => {
-      response.status(404).json({
-        error: "Entry not found",
-      });
-    };
     try {
       //try to get the id
       let { id } = request.params;
       if (!id || !/^\d+$/.test(id)) {
-        sendEntryNotFound();
+        this.#sendEntryNotFound(response);
         return;
       } else {
         //ask the db
         let result = this.#dbGetAnimeById(parseInt(id));
         if (!result) {
-          sendEntryNotFound();
+          this.#sendEntryNotFound(response);
           return;
         } else {
           response.status(200).type("json").json(result).end();
@@ -126,5 +122,73 @@ export default class AnimeApi {
     } catch (e) {
       next(e);
     }
+  }
+  /**
+   * Get all animes
+   * @route /:id/characters
+   */
+  #getAnimeCharactersById(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //try to get the id
+      let { id } = request.params;
+      if (!id || !/^\d+$/.test(id)) {
+        this.#sendEntryNotFound(response);
+        return;
+      } else {
+        let parsed_id = parseInt(id);
+        //search all characters related to the specified id
+        let result: Character[] = [];
+        let resolved_name: string | null = null;
+        let iterator = this.#database.iterateKeys(
+          "CHARACTER",
+          (entry: Character) => {
+            if (entry.presentOn.type !== "anime") {
+              return false;
+            }
+            if (entry.presentOn.id === parsed_id) {
+              //found
+              if (resolved_name) {
+                if (resolved_name !== entry.presentOn.name) {
+                  console.warn(
+                    `Inconsistency detected on the records. Expecting ${resolved_name} got ${entry.presentOn.name} for id ${parsed_id}`
+                  );
+                  return false;
+                } else {
+                  resolved_name = entry.presentOn.name;
+                }
+              }
+              return true;
+            } else {
+              return false;
+            }
+          }
+        );
+        //add those into the result set
+        for (const entry of iterator) {
+          let data = this.#database.getData<Character>("CHARACTER", entry);
+          if (data) result.push(data);
+        }
+        //if the result empty check is the database weather the id is inexistant
+        if (result.length > 0 || this.#database.getData("ANIME", parsed_id)) {
+          response.status(200).type("json").json(result);
+        } else {
+          this.#sendEntryNotFound(response);
+        }
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  #sendEntryNotFound(response: Response) {
+    response
+      .status(404)
+      .json({
+        error: "Entry not found",
+      })
+      .end();
   }
 }

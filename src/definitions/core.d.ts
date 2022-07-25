@@ -18,10 +18,7 @@ export declare type BilingualKeyedEntry = KeyedEntry & {
 
 export declare type People = BilingualKeyedEntry;
 
-export declare enum Gender {
-  MALE = "male",
-  FEMALE = "female",
-}
+export declare type Gender = "male" | "female";
 
 export declare type Character = BilingualKeyedEntry & {
   gender: Gender;
