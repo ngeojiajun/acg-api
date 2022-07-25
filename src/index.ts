@@ -19,7 +19,7 @@ app.disable("x-powered-by");
 
 app.use("/anime", new AnimeApi(db).asApplication());
 
-app.get("/", (req: Request, res: Response): void => {
+app.get("/", (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js!");
 });
 

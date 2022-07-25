@@ -81,7 +81,7 @@ export default class AnimeApi {
    * Get all animes
    * @route /
    */
-  #getAnimes(request: Request, response: Response, next: NextFunction) {
+  #getAnimes(_request: Request, response: Response, next: NextFunction) {
     try {
       let response_json = [];
       for (const key of this.#database.iterateKeys("ANIME")) {
