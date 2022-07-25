@@ -1,4 +1,5 @@
 import { readFileSync } from "fs";
+import path from "path";
 import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
@@ -28,33 +29,18 @@ type InternalParsedMap = {
  */
 export default class JsonDatabase implements IDatabase {
   /**
-   * The name of file that the database should load from
+   * The name of directory that the database should load from
    */
-  filename: string;
+  directory: string;
   #database: InternalParsedMap;
-  constructor(filename: string) {
+  constructor(directory: string) {
     console.warn("This class contains schema which is under heavy development");
-    this.filename = filename;
+    this.directory = directory;
     this.#database = {};
   }
   init() {
-    let data: any = JSON.parse(
-      readFileSync(this.filename, {
-        encoding: "utf8",
-      })
-    );
-    //quick check to see weather the stuffs is there
-    const required_key: string[] = ["anime", "person"];
-    for (const key of required_key) {
-      if (!data[key]) {
-        throw new Error(
-          `Cannot parse the JSON as valid database as it missing the key ${key}`
-        );
-      }
-    }
-    //validate and register the stuffs
-    this.#validateTable(data["anime"], "ANIME");
-    this.#validateTable(data["person"], "PERSON");
+    this.#loadAndRegister(path.join(this.directory, "animes.json"), "ANIME");
+    this.#loadAndRegister(path.join(this.directory, "persons.json"), "PERSON");
   }
   getData<T>(
     type: DatabaseTypes,
@@ -87,6 +73,21 @@ export default class JsonDatabase implements IDatabase {
       data.cache[id] = i;
       yield id;
     }
+  }
+  /**
+   * Load and register the file data into the internal tables
+   * @param filename the filename to JSON file where the data is located
+   * @param type the type of the database it should be injected into
+   */
+  #loadAndRegister(filename: string, type: DatabaseTypes) {
+    //load the register
+    let data: any = JSON.parse(
+      readFileSync(filename, {
+        encoding: "utf-8",
+      })
+    );
+    //load it into the database
+    this.#validateTable(data, type);
   }
   /**
    * Internal use only: get the internal table

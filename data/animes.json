@@ -1,29 +1,10 @@
-{
-  "anime": [
-    {
-      "id": 1,
-      "name": "Prima Doll",
-      "nameInJapanese": "プリマドール",
-      "author": [1, 2, 3],
-      "publisher": [1, 3],
-      "description": "<Unknown>"
-    }
-  ],
-  "person": [
-    {
-      "id": 1,
-      "name": "VISUAL ARTS",
-      "nameInJapanese": "VISUAL ARTS"
-    },
-    {
-      "id": 2,
-      "name": "Bibury Animation Studios G.K.",
-      "nameInJapanese": "バイブリーアニメーションスタジオ"
-    },
-    {
-      "id": 3,
-      "name": "Key",
-      "nameInJapanese": "Key"
-    }
-  ]
-}
+[
+  {
+    "id": 1,
+    "name": "Prima Doll",
+    "nameInJapanese": "プリマドール",
+    "author": [1, 2, 3],
+    "publisher": [1, 3],
+    "description": "<Unknown>"
+  }
+]
