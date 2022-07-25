@@ -1,11 +1,12 @@
 /**
  * Serialization related to anime.d.ts
  */
-import { AnimeEntry } from "./anime";
+import { ACGEntry, AnimeEntry } from "./anime";
 import {
   BilingualKeyedEntry,
   Category,
   Character,
+  CharacterPresence,
   Gender,
   KeyedEntry,
   People,
@@ -51,10 +52,10 @@ export function asPeople(table: any): People | null {
 }
 
 /**
- * Given the `table` try convert it into `AnimeEntry`
+ * Given the `table` try convert it into `ACGEntry`
  * @param table table to decode
  */
-export function asAnimeEntry(table: any): AnimeEntry | null {
+export function asACGEntry(table: any): ACGEntry | null {
   //try convert it into our superclass
   if (!asBilingualKeyEntry(table)) {
     return null;
@@ -81,6 +82,20 @@ export function asAnimeEntry(table: any): AnimeEntry | null {
   return table;
 }
 
+export function asAnimeEntry(table: any): AnimeEntry | null {
+  return asACGEntry(table);
+}
+
+export function asCharacterPresence(table: any): CharacterPresence | null {
+  if (!asKeyedEntry(table)) {
+    return null;
+  }
+  if (!asEnumeration(table.type, ["anime", "game", "comic"])) {
+    return null;
+  }
+  return table as CharacterPresence;
+}
+
 export function asCharacter(table: any): Character | null {
   if (!asBilingualKeyEntry(table)) {
     return null;
@@ -91,10 +106,7 @@ export function asCharacter(table: any): Character | null {
   ) {
     return null;
   }
-  if (
-    !asKeyedEntry(table.presentOn) ||
-    typeof table.presentOn.type !== "string"
-  ) {
+  if (!asCharacterPresence(table.presentOn)) {
     return null;
   }
   return table;
