@@ -1,7 +1,7 @@
 /**
  * This file contain the data structure returned by the endpoint
  */
-import { BilingualKeyedEntry, Category, KeyedEntry, People } from "./core";
+import { BilingualKeyedEntry, Category, People } from "./core";
 /**
  * Describe an anime entry
  */
