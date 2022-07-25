@@ -1,7 +1,7 @@
 /**
  * Serialization related to anime.d.ts
  */
-import { AnimeEntry } from "./anime";
+import { ACGEntry, AnimeEntry } from "./anime";
 import {
   BilingualKeyedEntry,
   Category,
@@ -51,10 +51,10 @@ export function asPeople(table: any): People | null {
 }
 
 /**
- * Given the `table` try convert it into `AnimeEntry`
+ * Given the `table` try convert it into `ACGEntry`
  * @param table table to decode
  */
-export function asAnimeEntry(table: any): AnimeEntry | null {
+export function asACGEntry(table: any): ACGEntry | null {
   //try convert it into our superclass
   if (!asBilingualKeyEntry(table)) {
     return null;
@@ -79,6 +79,10 @@ export function asAnimeEntry(table: any): AnimeEntry | null {
   }
 
   return table;
+}
+
+export function asAnimeEntry(table: any): AnimeEntry | null {
+  return asACGEntry(table);
 }
 
 export function asCharacter(table: any): Character | null {

@@ -3,11 +3,13 @@
  */
 import { BilingualKeyedEntry, Category, People } from "./core";
 /**
- * Describe an anime entry
+ * Describe an base ACG entry
  */
-export declare type AnimeEntry = BilingualKeyedEntry & {
+export declare type ACGEntry = BilingualKeyedEntry & {
   description: string;
   category?: Category[];
   publisher?: People[];
   author?: People[];
 };
+
+export declare type AnimeEntry = ACGEntry;
