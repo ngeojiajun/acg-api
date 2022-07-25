@@ -6,6 +6,7 @@ import {
   BilingualKeyedEntry,
   Category,
   Character,
+  CharacterPresence,
   Gender,
   KeyedEntry,
   People,
@@ -85,6 +86,16 @@ export function asAnimeEntry(table: any): AnimeEntry | null {
   return asACGEntry(table);
 }
 
+export function asCharacterPresence(table: any): CharacterPresence | null {
+  if (!asKeyedEntry(table)) {
+    return null;
+  }
+  if (!asEnumeration(table.type, ["anime", "game", "comic"])) {
+    return null;
+  }
+  return table as CharacterPresence;
+}
+
 export function asCharacter(table: any): Character | null {
   if (!asBilingualKeyEntry(table)) {
     return null;
@@ -95,10 +106,7 @@ export function asCharacter(table: any): Character | null {
   ) {
     return null;
   }
-  if (
-    !asKeyedEntry(table.presentOn) ||
-    typeof table.presentOn.type !== "string"
-  ) {
+  if (!asCharacterPresence(table.presentOn)) {
     return null;
   }
   return table;

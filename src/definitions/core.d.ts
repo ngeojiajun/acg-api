@@ -19,13 +19,11 @@ export declare type BilingualKeyedEntry = KeyedEntry & {
 export declare type People = BilingualKeyedEntry;
 
 export declare type Gender = "male" | "female";
+export declare type CharacterPresence = KeyedEntry & {
+  type: "anime" | "game" | "comic";
+};
 
 export declare type Character = BilingualKeyedEntry & {
   gender: Gender;
-  presentOn: KeyedEntry & {
-    /**
-     * Type of the work he/she present
-     */
-    type: string;
-  };
+  presentOn: CharacterPresence;
 };
