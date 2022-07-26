@@ -197,7 +197,7 @@ export default class JsonDatabase implements IDatabase {
           );
           if (!parsed) {
             throw new Error(
-              `JSONDatabase: detected schema violation when parsing table for inclusion into CHARACTER`
+              `JSONDatabase: detected schema violation when parsing table for inclusion into CATEGORY`
             );
           }
           //construct the stuffs
