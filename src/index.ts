@@ -5,6 +5,9 @@
  */
 import express, { Application, Request, Response } from "express";
 import AnimeApi from "./api/anime";
+import BasicAuthenticationProider from "./authentication/auth_base";
+import ProtectedRoute from "./authentication/middlewares";
+import { LoginRoute } from "./authentication/routes";
 import { IDatabase } from "./database/database";
 import JsonDatabase from "./database/jsonDatabase";
 
@@ -12,15 +15,29 @@ import JsonDatabase from "./database/jsonDatabase";
 let db: IDatabase = new JsonDatabase("./data/");
 db.init();
 
+//init the authorization provider
+let auth: BasicAuthenticationProider = new BasicAuthenticationProider();
+auth.init();
+
 const app: Application = express();
 const PORT = process.env.PORT || 8000;
 
 app.disable("x-powered-by");
 
+app.use(express.json());
+
 app.use("/anime", new AnimeApi(db).asApplication());
 
 app.get("/", (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js!");
+});
+
+app.post("/login", LoginRoute(auth));
+
+app.use(ProtectedRoute(auth));
+
+app.get("/auth", (_req: Request, res: Response): void => {
+  res.send("Hello Typescript with Node.js! The authenticated version");
 });
 
 app.listen(PORT, (): void => {
