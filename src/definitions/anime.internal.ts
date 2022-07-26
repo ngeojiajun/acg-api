@@ -9,6 +9,7 @@ export type AnimeEntryInternal = Omit<
   AnimeEntry,
   "author" | "publisher" | "category"
 > & {
+  year: number;
   /**
    * Category ids which correspond to Category table
    */
@@ -32,6 +33,9 @@ export function asAnimeEntryInternal(table: any): AnimeEntryInternal | null {
     return null;
   }
   if (typeof table.description !== "string") {
+    return null;
+  }
+  if (typeof table.year !== "number") {
     return null;
   }
   //parse the authors and publishers as array of integet
