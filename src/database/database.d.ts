@@ -31,4 +31,8 @@ export declare interface IDatabase {
    * Iterate every single possible valid keys
    */
   iterateKeys: (type: DatabaseTypes, extras?: any) => Generator<number>;
+  /**
+   * Shutdown the database
+   */
+  close(): void;
 }

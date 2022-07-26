@@ -26,3 +26,10 @@ app.get("/", (_req: Request, res: Response): void => {
 app.listen(PORT, (): void => {
   console.log(`Server Running here 👉 http://localhost:${PORT}`);
 });
+
+process.on("exit", () => {
+  db.close();
+});
+process.on("SIGINT", () => {
+  process.exit(0);
+});

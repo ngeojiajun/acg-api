@@ -92,6 +92,9 @@ export default class JsonDatabase implements IDatabase {
       yield id;
     }
   }
+  close(): void {
+    console.log("Closing db");
+  }
   /**
    * Load and register the file data into the internal tables
    * @param filename the filename to JSON file where the data is located
