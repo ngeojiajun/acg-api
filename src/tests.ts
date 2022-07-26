@@ -2,6 +2,7 @@
  * Intergity test toward the database
  */
 
+import { Console } from "console";
 import { IDatabase } from "./database/database";
 import JsonDatabase from "./database/jsonDatabase";
 import { AnimeEntryInternal } from "./definitions/anime.internal";
@@ -77,6 +78,9 @@ function main() {
       }
     }
     console.log("Characters table checked");
+  } catch (E) {
+    console.error(`Test failed!`);
+    console.error(E);
   } finally {
     db.close();
   }
