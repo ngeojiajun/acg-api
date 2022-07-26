@@ -13,5 +13,18 @@ export function allowIfNotProd(
   }
 }
 
+/**
+ * Try parse the incoming string as integer
+ * @param str String to parse
+ * @returns the parsed number or null on failure
+ */
+export function tryParseInteger(str: string): number | null {
+  if (!str || !/^\d+$/.test(str)) {
+    return null;
+  } else {
+    return parseInt(str);
+  }
+}
+
 //Never meant to be exported
 class NotAllowedInProductionError extends Error {}

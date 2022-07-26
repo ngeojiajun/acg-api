@@ -6,6 +6,7 @@ import {
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
 import { Character, People } from "../definitions/core";
+import { tryParseInteger } from "../utils";
 import { nonExistantRoute } from "./commonUtils";
 
 export default class AnimeApi {
@@ -105,13 +106,13 @@ export default class AnimeApi {
   #getAnimeById(request: Request, response: Response, next: NextFunction) {
     try {
       //try to get the id
-      let { id } = request.params;
-      if (!id || !/^\d+$/.test(id)) {
+      let id = tryParseInteger(request.params.id);
+      if (!id) {
         this.#sendEntryNotFound(response);
         return;
       } else {
         //ask the db
-        let result = this.#dbGetAnimeById(parseInt(id));
+        let result = this.#dbGetAnimeById(id);
         if (!result) {
           this.#sendEntryNotFound(response);
           return;
@@ -134,12 +135,11 @@ export default class AnimeApi {
   ) {
     try {
       //try to get the id
-      let { id } = request.params;
-      if (!id || !/^\d+$/.test(id)) {
+      let id = tryParseInteger(request.params.id);
+      if (!id) {
         this.#sendEntryNotFound(response);
         return;
       } else {
-        let parsed_id = parseInt(id);
         //search all characters related to the specified id
         let result: Character[] = [];
         let resolved_name: string | null = null;
@@ -149,12 +149,12 @@ export default class AnimeApi {
             if (entry.presentOn.type !== "anime") {
               return false;
             }
-            if (entry.presentOn.id === parsed_id) {
+            if (entry.presentOn.id === id) {
               //found
               if (resolved_name) {
                 if (resolved_name !== entry.presentOn.name) {
                   console.warn(
-                    `Inconsistency detected on the records. Expecting ${resolved_name} got ${entry.presentOn.name} for id ${parsed_id}`
+                    `Inconsistency detected on the records. Expecting ${resolved_name} got ${entry.presentOn.name} for id ${id}`
                   );
                   return false;
                 } else {
@@ -173,7 +173,7 @@ export default class AnimeApi {
           if (data) result.push(data);
         }
         //if the result empty check is the database weather the id is inexistant
-        if (result.length > 0 || this.#database.getData("ANIME", parsed_id)) {
+        if (result.length > 0 || this.#database.getData("ANIME", id)) {
           response.status(200).type("json").json(result);
         } else {
           this.#sendEntryNotFound(response);
