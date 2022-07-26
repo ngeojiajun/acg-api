@@ -5,7 +5,7 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { Character, People } from "../definitions/core";
+import { Category, Character, People } from "../definitions/core";
 import { tryParseInteger } from "../utils";
 import { nonExistantRoute } from "./commonUtils";
 
@@ -37,35 +37,56 @@ export default class AnimeApi {
     //build a copied version of the entry
     let return_value: AnimeEntry = {
       ...decoded,
+      category: [],
       author: [],
       publisher: [],
     };
     //now try to resolve the pointer at author
-    for (const key of decoded.author) {
-      //search the db for it
-      let resolved = this.#database.getData<People>("PERSON", key);
-      if (!resolved) {
-        console.error(
-          "Refusing to convert to AnimeEntry because of the dangling pointer"
-        );
-        console.error(`Cannot find entry which resolves the id=${key}`);
-        return null;
-      } else {
-        return_value.author?.push(resolved);
+    if (decoded.author) {
+      for (const key of decoded.author) {
+        //search the db for it
+        let resolved = this.#database.getData<People>("PERSON", key);
+        if (!resolved) {
+          console.error(
+            "Refusing to convert to AnimeEntry because of the dangling pointer"
+          );
+          console.error(`Cannot find entry which resolves the id=${key}`);
+          return null;
+        } else {
+          return_value.author?.push(resolved);
+        }
       }
     }
-    //now publisher's turn
-    for (const key of decoded.publisher) {
-      //search the db for it
-      let resolved = this.#database.getData<People>("PERSON", key);
-      if (!resolved) {
-        console.error(
-          "Refusing to convert to AnimeEntry because of the dangling pointer"
-        );
-        console.error(`Cannot find entry which resolves the id=${key}`);
-        return null;
-      } else {
-        return_value.publisher?.push(resolved);
+    if (decoded.publisher) {
+      //now publisher's turn
+      for (const key of decoded.publisher) {
+        //search the db for it
+        let resolved = this.#database.getData<People>("PERSON", key);
+        if (!resolved) {
+          console.error(
+            "Refusing to convert to AnimeEntry because of the dangling pointer"
+          );
+          console.error(`Cannot find entry which resolves the id=${key}`);
+          return null;
+        } else {
+          return_value.publisher?.push(resolved);
+        }
+      }
+    }
+    //finally try resolve the categories
+    if (decoded.category) {
+      for (const key of decoded.category) {
+        //search the db for it
+        let resolved = this.#database.getData<Category>("CATEGORY", key);
+        if (!resolved) {
+          console.error(
+            "Refusing to convert to AnimeEntry because of the dangling pointer"
+          );
+          console.error(`Cannot find entry which resolves the id=${key}`);
+          return null;
+        } else {
+          return_value.category?.push(resolved);
+        }
       }
     }
     return return_value;

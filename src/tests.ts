@@ -2,7 +2,6 @@
  * Intergity test toward the database
  */
 
-import { idText } from "typescript";
 import { IDatabase } from "./database/database";
 import JsonDatabase from "./database/jsonDatabase";
 import { AnimeEntryInternal } from "./definitions/anime.internal";
@@ -26,8 +25,8 @@ function main() {
         "Key returned from iterator must be resolvable but it is not in fact"
       );
     //merge the ptrs
-    let ptrs = [...a.author];
-    a.publisher.forEach((v) => {
+    let ptrs = [...(a.author ?? [])];
+    a.publisher?.forEach((v) => {
       if (!ptrs.includes(v)) {
         ptrs.push(v);
       }
@@ -41,6 +40,17 @@ function main() {
         );
       }
     });
+    //now test the categories
+    if (a.category) {
+      for (const key of a.category) {
+        let data = db.getData("CATEGORY", key);
+        if (!data) {
+          fail(
+            `Failed to resolve pointer CATEGORY{id=${key}} at ANIME{id=${k}}`
+          );
+        }
+      }
+    }
   }
   console.log("Anime table contain no dangling pointers");
   console.log("Testing characters table");

@@ -4,8 +4,13 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { asArrayOf, asCharacter, asPeople } from "../definitions/converters";
-import { Character, KeyedEntry, People } from "../definitions/core";
+import {
+  asArrayOf,
+  asCategory,
+  asCharacter,
+  asPeople,
+} from "../definitions/converters";
+import { Category, Character, KeyedEntry, People } from "../definitions/core";
 import { Cached, findEntry, makeCached } from "../utilities/cached";
 import { allowIfNotProd } from "../utils";
 import { DatabaseTypes, IDatabase } from "./database";
@@ -23,6 +28,7 @@ type InternalParsedMap = {
    */
   person?: Cached<People>;
   characters?: Cached<Character>;
+  categories?: Cached<Category>;
 };
 
 /**
@@ -45,6 +51,10 @@ export default class JsonDatabase implements IDatabase {
     this.#loadAndRegister(
       path.join(this.directory, "characters.json"),
       "CHARACTER"
+    );
+    this.#loadAndRegister(
+      path.join(this.directory, "categories.json"),
+      "CATEGORY"
     );
   }
   getData<T>(
@@ -118,6 +128,11 @@ export default class JsonDatabase implements IDatabase {
           return null;
         }
         return this.#database.characters;
+      case "CATEGORY":
+        if (!this.#database.categories) {
+          return null;
+        }
+        return this.#database.categories;
     }
   }
   /**
@@ -169,6 +184,21 @@ export default class JsonDatabase implements IDatabase {
           }
           //construct the stuffs
           this.#database.characters = makeCached(parsed);
+        }
+        break;
+      case "CATEGORY":
+        {
+          let parsed: Category[] | null = asArrayOf<Category>(
+            table,
+            asCategory
+          );
+          if (!parsed) {
+            throw new Error(
+              `JSONDatabase: detected schema violation when parsing table for inclusion into CHARACTER`
+            );
+          }
+          //construct the stuffs
+          this.#database.categories = makeCached(parsed);
         }
         break;
     }

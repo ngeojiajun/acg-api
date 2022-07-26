@@ -3,7 +3,11 @@
  * This usaually sufficient for other users
  */
 
-export declare type DatabaseTypes = "ANIME" | "CHARACTER" | "PERSON";
+export declare type DatabaseTypes =
+  | "ANIME"
+  | "CHARACTER"
+  | "PERSON"
+  | "CATEGORY";
 
 export declare interface IDatabase {
   /**
