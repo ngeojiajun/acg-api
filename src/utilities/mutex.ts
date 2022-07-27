@@ -40,7 +40,7 @@ export default class Mutex {
     if (this.#request.length > 0) {
       //resolve the promise in queue
       this.#request[0](this.#release.bind(this));
-      this.#request.unshift();
+      this.#request.shift();
     } else {
       this.#locked = true;
     }
