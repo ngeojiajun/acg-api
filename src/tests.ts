@@ -4,6 +4,7 @@
 
 import { Console } from "console";
 import { IDatabase } from "./database/database";
+import { checkRemoteReferences } from "./database/integrityTestUtils";
 import JsonDatabase from "./database/jsonDatabase";
 import { AnimeEntryInternal } from "./definitions/anime.internal";
 import { Character } from "./definitions/core";
@@ -26,32 +27,9 @@ function main() {
         fail(
           "Key returned from iterator must be resolvable but it is not in fact"
         );
-      //merge the ptrs
-      let ptrs = [...(a.author ?? [])];
-      a.publisher?.forEach((v) => {
-        if (!ptrs.includes(v)) {
-          ptrs.push(v);
-        }
-      });
-      //test all ptrs
-      ptrs.forEach((key) => {
-        let data = db.getData("PERSON", key);
-        if (!data) {
-          fail(
-            `Failed to resolve pointer CHARACTER{id=${key}} at ANIME{id=${k}}`
-          );
-        }
-      });
-      //now test the categories
-      if (a.category) {
-        for (const key of a.category) {
-          let data = db.getData("CATEGORY", key);
-          if (!data) {
-            fail(
-              `Failed to resolve pointer CATEGORY{id=${key}} at ANIME{id=${k}}`
-            );
-          }
-        }
+      let { success, message } = checkRemoteReferences(db, a);
+      if (!success) {
+        fail(message);
       }
     }
     console.log("Anime table contain no dangling pointers");
