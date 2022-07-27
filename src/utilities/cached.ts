@@ -20,8 +20,14 @@ export type Cached<T extends KeyedEntry> = {
  * A quick function to build the cached object
  * @param values the main array
  * @returns the built array
+ * @throws Error if the values id are not unique
  */
-export function makeCached<T extends KeyedEntry>(values: T[]): Cached<T> {
+export function makeCached<T extends KeyedEntry>(
+  values: T[]
+): Cached<T> | never {
+  if (new Set<number>(values.map((g) => g.id)).size !== values.length) {
+    throw new Error("Array content is not unique");
+  }
   return {
     entries: values,
     cache: {},
