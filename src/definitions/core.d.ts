@@ -2,6 +2,11 @@
  * Core type declarations
  */
 
+export declare type Status = {
+  success: boolean;
+  message: string | undefined;
+};
+
 /**
  * Common properties that the keyed entry needed to have
  */

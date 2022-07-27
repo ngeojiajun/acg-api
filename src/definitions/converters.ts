@@ -67,6 +67,10 @@ export function asACGEntry(table: any): ACGEntry | null {
     return null;
   }
 
+  if (typeof table.year !== "number") {
+    return null;
+  }
+
   if (table.category && !asArrayOf<KeyedEntry>(table.category, asCategory)) {
     return null;
   }

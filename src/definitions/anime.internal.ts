@@ -1,20 +1,27 @@
 import { AnimeEntry } from "./anime";
-import { asArrayOf, asBilingualKeyEntry, asCategory } from "./converters";
-import { KeyedEntry } from "./core";
+import { asArrayOf, asBilingualKeyEntry } from "./converters";
 
 /**
  * Internal representation of the database
  * DONT ship this to client
  */
-export type AnimeEntryInternal = Omit<AnimeEntry, "author" | "publisher"> & {
+export type AnimeEntryInternal = Omit<
+  AnimeEntry,
+  "author" | "publisher" | "category"
+> & {
+  year: number;
+  /**
+   * Category ids which correspond to Category table
+   */
+  category?: number[];
   /**
    * Authors ids which correspond to Person table
    */
-  author: number[];
+  author?: number[];
   /**
    * Publisher ids which correspond to Person table
    */
-  publisher: number[];
+  publisher?: number[];
 };
 
 /**
@@ -28,13 +35,16 @@ export function asAnimeEntryInternal(table: any): AnimeEntryInternal | null {
   if (typeof table.description !== "string") {
     return null;
   }
-  if (table.category && !asArrayOf<KeyedEntry>(table.category, asCategory)) {
+  if (typeof table.year !== "number") {
     return null;
   }
   //parse the authors and publishers as array of integet
   const asNumber = (v: any): number | null => {
     return typeof v === "number" ? v : null;
   };
+  if (table.category && !asArrayOf<number>(table.category, asNumber)) {
+    return null;
+  }
   if (table.publisher && !asArrayOf<number>(table.publisher, asNumber)) {
     return null;
   }

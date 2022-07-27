@@ -5,7 +5,8 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { Character, People } from "../definitions/core";
+import { Category, Character, People } from "../definitions/core";
+import { tryParseInteger } from "../utils";
 import { nonExistantRoute } from "./commonUtils";
 
 export default class AnimeApi {
@@ -36,35 +37,56 @@ export default class AnimeApi {
     //build a copied version of the entry
     let return_value: AnimeEntry = {
       ...decoded,
+      category: [],
       author: [],
       publisher: [],
     };
     //now try to resolve the pointer at author
-    for (const key of decoded.author) {
-      //search the db for it
-      let resolved = this.#database.getData<People>("PERSON", key);
-      if (!resolved) {
-        console.error(
-          "Refusing to convert to AnimeEntry because of the dangling pointer"
-        );
-        console.error(`Cannot find entry which resolves the id=${key}`);
-        return null;
-      } else {
-        return_value.author?.push(resolved);
+    if (decoded.author) {
+      for (const key of decoded.author) {
+        //search the db for it
+        let resolved = this.#database.getData<People>("PERSON", key);
+        if (!resolved) {
+          console.error(
+            "Refusing to convert to AnimeEntry because of the dangling pointer"
+          );
+          console.error(`Cannot find entry which resolves the id=${key}`);
+          return null;
+        } else {
+          return_value.author?.push(resolved);
+        }
       }
     }
-    //now publisher's turn
-    for (const key of decoded.publisher) {
-      //search the db for it
-      let resolved = this.#database.getData<People>("PERSON", key);
-      if (!resolved) {
-        console.error(
-          "Refusing to convert to AnimeEntry because of the dangling pointer"
-        );
-        console.error(`Cannot find entry which resolves the id=${key}`);
-        return null;
-      } else {
-        return_value.publisher?.push(resolved);
+    if (decoded.publisher) {
+      //now publisher's turn
+      for (const key of decoded.publisher) {
+        //search the db for it
+        let resolved = this.#database.getData<People>("PERSON", key);
+        if (!resolved) {
+          console.error(
+            "Refusing to convert to AnimeEntry because of the dangling pointer"
+          );
+          console.error(`Cannot find entry which resolves the id=${key}`);
+          return null;
+        } else {
+          return_value.publisher?.push(resolved);
+        }
+      }
+    }
+    //finally try resolve the categories
+    if (decoded.category) {
+      for (const key of decoded.category) {
+        //search the db for it
+        let resolved = this.#database.getData<Category>("CATEGORY", key);
+        if (!resolved) {
+          console.error(
+            "Refusing to convert to AnimeEntry because of the dangling pointer"
+          );
+          console.error(`Cannot find entry which resolves the id=${key}`);
+          return null;
+        } else {
+          return_value.category?.push(resolved);
+        }
       }
     }
     return return_value;
@@ -105,13 +127,13 @@ export default class AnimeApi {
   #getAnimeById(request: Request, response: Response, next: NextFunction) {
     try {
       //try to get the id
-      let { id } = request.params;
-      if (!id || !/^\d+$/.test(id)) {
+      let id = tryParseInteger(request.params.id);
+      if (!id) {
         this.#sendEntryNotFound(response);
         return;
       } else {
         //ask the db
-        let result = this.#dbGetAnimeById(parseInt(id));
+        let result = this.#dbGetAnimeById(id);
         if (!result) {
           this.#sendEntryNotFound(response);
           return;
@@ -134,12 +156,11 @@ export default class AnimeApi {
   ) {
     try {
       //try to get the id
-      let { id } = request.params;
-      if (!id || !/^\d+$/.test(id)) {
+      let id = tryParseInteger(request.params.id);
+      if (!id) {
         this.#sendEntryNotFound(response);
         return;
       } else {
-        let parsed_id = parseInt(id);
         //search all characters related to the specified id
         let result: Character[] = [];
         let resolved_name: string | null = null;
@@ -149,12 +170,12 @@ export default class AnimeApi {
             if (entry.presentOn.type !== "anime") {
               return false;
             }
-            if (entry.presentOn.id === parsed_id) {
+            if (entry.presentOn.id === id) {
               //found
               if (resolved_name) {
                 if (resolved_name !== entry.presentOn.name) {
                   console.warn(
-                    `Inconsistency detected on the records. Expecting ${resolved_name} got ${entry.presentOn.name} for id ${parsed_id}`
+                    `Inconsistency detected on the records. Expecting ${resolved_name} got ${entry.presentOn.name} for id ${id}`
                   );
                   return false;
                 } else {
@@ -173,7 +194,7 @@ export default class AnimeApi {
           if (data) result.push(data);
         }
         //if the result empty check is the database weather the id is inexistant
-        if (result.length > 0 || this.#database.getData("ANIME", parsed_id)) {
+        if (result.length > 0 || this.#database.getData("ANIME", id)) {
           response.status(200).type("json").json(result);
         } else {
           this.#sendEntryNotFound(response);
