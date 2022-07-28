@@ -2,11 +2,16 @@
  * Mutual exclusive access primitive based on Promise
  */
 export default class Mutex {
-  #allowConcurrentRead;
+  #allow_concurrent_read;
   #locked = false;
   #request: Function[] = [];
+  /**
+   * Number of readers
+   */
+  #readers = 0;
+  #reader_mutex_unlock?: Function;
   constructor(allowConcurrentRead: boolean = false) {
-    this.#allowConcurrentRead = allowConcurrentRead;
+    this.#allow_concurrent_read = allowConcurrentRead;
   }
   /**
    * Try to lock the mutex
@@ -26,11 +31,19 @@ export default class Mutex {
   /**
    * Try to lock the mutex but caller must not temper the data
    */
-  tryLockRead(): Promise<Function> {
-    if (this.#locked && this.#allowConcurrentRead) {
-      return Promise.resolve(() => {});
+  async tryLockRead(): Promise<Function> {
+    if (this.#allow_concurrent_read) {
+      if (this.#reader_mutex_unlock === undefined) {
+        //if the mutex is not present create one
+        this.#reader_mutex_unlock = await this.tryLock();
+        this.#readers = 1;
+      } else {
+        //else increament the stuffs by one
+        this.#readers++;
+      }
+      return this.#releaseReader.bind(this);
     } else {
-      return this.tryLock();
+      return await this.tryLock();
     }
   }
   /**
@@ -42,7 +55,13 @@ export default class Mutex {
       this.#request[0](this.#release.bind(this));
       this.#request.shift();
     } else {
-      this.#locked = true;
+      this.#locked = false;
+    }
+  }
+  #releaseReader(): void {
+    if (--this.#readers <= 0) {
+      this.#reader_mutex_unlock?.();
+      this.#reader_mutex_unlock = undefined;
     }
   }
 }
