@@ -2,7 +2,6 @@
  * Intergity test toward the database
  */
 
-import { Console } from "console";
 import { IDatabase } from "./database/database";
 import { checkRemoteReferences } from "./database/integrityTestUtils";
 import JsonDatabase from "./database/jsonDatabase";
@@ -13,16 +12,16 @@ function fail(message: string = "Assertion failed"): never {
   throw new Error(message);
 }
 
-function main() {
+async function main() {
   let db: IDatabase = new JsonDatabase("./data/");
   console.log("Database is initializing");
-  db.init();
+  await db.init();
   try {
     console.log("Database is initialized");
     //test every single pointer from anime
     console.log("Checking anime table....");
-    for (const k of db.iterateKeys("ANIME")) {
-      let a = db.getData<AnimeEntryInternal>("ANIME", k);
+    for await (const k of db.iterateKeys("ANIME")) {
+      let a = await db.getData<AnimeEntryInternal>("ANIME", k);
       if (!a)
         fail(
           "Key returned from iterator must be resolvable but it is not in fact"
@@ -34,15 +33,15 @@ function main() {
     }
     console.log("Anime table contain no dangling pointers");
     console.log("Testing characters table");
-    for (const k of db.iterateKeys("CHARACTER")) {
-      let a = db.getData<Character>("CHARACTER", k);
+    for await (const k of db.iterateKeys("CHARACTER")) {
+      let a = await db.getData<Character>("CHARACTER", k);
       if (!a) {
         fail(
           "Key returned from iterator must be resolvable but it is not in fact"
         );
       }
       //try to resolve the pointer
-      let anime = db.getData<AnimeEntryInternal>("ANIME", a.presentOn.id);
+      let anime = await db.getData<AnimeEntryInternal>("ANIME", a.presentOn.id);
       if (!anime) {
         fail(
           `Failed to resolve pointer ANIME{id=${a.presentOn.id}} at CHARACTER{id=${k}}`
@@ -64,4 +63,5 @@ function main() {
   }
 }
 
-main();
+const t = setInterval(() => {}, 1000);
+main().finally(() => clearInterval(t));
