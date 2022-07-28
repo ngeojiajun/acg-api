@@ -13,7 +13,6 @@ import JsonDatabase from "./database/jsonDatabase";
 
 //load the data
 let db: IDatabase = new JsonDatabase("./data/");
-db.init();
 
 //init the authorization provider
 let auth: BasicAuthenticationProider = new BasicAuthenticationProider();
@@ -40,8 +39,10 @@ app.get("/auth", (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js! The authenticated version");
 });
 
-app.listen(PORT, (): void => {
-  console.log(`Server Running here 👉 http://localhost:${PORT}`);
+db.init().then(() => {
+  app.listen(PORT, (): void => {
+    console.log(`Server Running here 👉 http://localhost:${PORT}`);
+  });
 });
 
 process.on("exit", () => {
