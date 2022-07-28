@@ -10,10 +10,23 @@ import {
   asCharacter,
   asPeople,
 } from "../definitions/converters";
-import { Category, Character, KeyedEntry, People } from "../definitions/core";
+import {
+  Category,
+  Character,
+  KeyedEntry,
+  People,
+  Status,
+} from "../definitions/core";
 import { Cached, findEntry, makeCached } from "../utilities/cached";
+import Mutex from "../utilities/mutex";
 import { allowIfNotProd } from "../utils";
-import { DatabaseTypes, IDatabase } from "./database";
+import {
+  DatabaseTypes,
+  DatabaseTypesMapping,
+  IDatabase,
+  ReturnType,
+} from "./database";
+import { checkRemoteReferences, constructStatus } from "./integrityTestUtils";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -40,28 +53,95 @@ export default class JsonDatabase implements IDatabase {
    */
   directory: string;
   #database: InternalParsedMap;
+  #mutex: Mutex;
   constructor(directory: string) {
     console.warn("This class contains schema which is under heavy development");
     this.directory = directory;
     this.#database = {};
+    //The read only function only modify the cache which are not critical
+    this.#mutex = new Mutex(true);
   }
-  init() {
-    this.#loadAndRegister(path.join(this.directory, "animes.json"), "ANIME");
-    this.#loadAndRegister(path.join(this.directory, "persons.json"), "PERSON");
-    this.#loadAndRegister(
-      path.join(this.directory, "characters.json"),
-      "CHARACTER"
-    );
-    this.#loadAndRegister(
-      path.join(this.directory, "categories.json"),
-      "CATEGORY"
-    );
+
+  async addData<T extends DatabaseTypes>(
+    type: T,
+    data: DatabaseTypesMapping[T]
+  ): Promise<Status> {
+    let table: Cached<KeyedEntry> | null = this.#getTable(type);
+    if (!table) {
+      throw new Error("Fatal error: table not registered yet. bug?");
+    }
+    let status: Status = constructStatus(false, "Unimplemented");
+    let mutex_release = await this.#mutex.tryLock();
+    try {
+      switch (type) {
+        case "ANIME": {
+          let cast = asAnimeEntryInternal(data);
+          if (!cast) return constructStatus(false, "Invalid data");
+          //ensure the data is not clashing with current one
+          let iterator = this.iterateKeys(
+            type,
+            (data: AnimeEntryInternal) =>
+              data.name === cast?.name &&
+              data.nameInJapanese === cast.nameInJapanese
+          );
+          if (!(await iterator.next()).done) {
+            //there are conflicts
+            status = constructStatus(
+              false,
+              "The data might be already in database"
+            );
+          } else {
+            //then perform external reference integrity
+            let status = checkRemoteReferences(this, cast);
+            if (status.success) {
+              //it is ok now lets perform final preparation
+              let lastIdx = (table.entries.length ?? 0) - 1;
+              let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
+              while (findEntry(table, id)) {
+                id++; //if clash try next
+              }
+              //finally push this
+              let tableIdx = table.entries.push(data) - 1;
+              table.cache[id] = tableIdx;
+              //done
+              status = constructStatus(true);
+            }
+          }
+        }
+      }
+    } finally {
+      mutex_release();
+    }
+    return status;
   }
-  getData<T>(
+
+  async init() {
+    let mutex_release = await this.#mutex.tryLock();
+    try {
+      this.#loadAndRegister(path.join(this.directory, "animes.json"), "ANIME");
+      this.#loadAndRegister(
+        path.join(this.directory, "persons.json"),
+        "PERSON"
+      );
+      this.#loadAndRegister(
+        path.join(this.directory, "characters.json"),
+        "CHARACTER"
+      );
+      this.#loadAndRegister(
+        path.join(this.directory, "categories.json"),
+        "CATEGORY"
+      );
+    } finally {
+      mutex_release();
+    }
+  }
+  async getData<T>(
     type: DatabaseTypes,
     id: number,
-    converter?: ((data: any, db: IDatabase) => T | null) | undefined
-  ): T | null {
+    converter?:
+      | ((data: any, db: IDatabase) => ReturnType<T> | Promise<ReturnType<T>>)
+      | undefined
+  ): Promise<ReturnType<T>> {
     if (!converter) {
       converter = (data: any) => data as T;
     }
@@ -69,27 +149,42 @@ export default class JsonDatabase implements IDatabase {
     if (!data) {
       throw new Error("Fatal error: table not registered yet. bug?");
     }
-    let entry = findEntry(data, id);
-    if (entry) {
-      return converter(entry, this);
+    let entry: T | KeyedEntry | null = null;
+    let mutex_release = await this.#mutex.tryLockRead();
+    try {
+      entry = findEntry(data, id);
+      if (entry) {
+        entry = await converter(entry, this);
+      }
+    } finally {
+      mutex_release();
     }
-    return null;
+    return entry;
   }
-  *iterateKeys(type: DatabaseTypes, extras?: any): Generator<number> {
+  async *iterateKeys(
+    type: DatabaseTypes,
+    extras?: any
+  ): AsyncGenerator<number> {
     let data: Cached<KeyedEntry> | null = this.#getTable(type);
     if (!data) {
       throw new Error("Fatal error: table not registered yet. bug?");
     }
-    /**
-     * Iterate the objects and remember the relationship of the id:index
-     */
-    for (let i = 0; i < data.entries.length; i++) {
-      let id = data.entries[i].id;
-      data.cache[id] = i;
-      if (typeof extras === "function" && !extras(data.entries[i])) {
-        continue;
+    //lock the table
+    let mutex_release = await this.#mutex.tryLockRead();
+    try {
+      /**
+       * Iterate the objects and remember the relationship of the id:index
+       */
+      for (let i = 0; i < data.entries.length; i++) {
+        let id = data.entries[i].id;
+        data.cache[id] = i;
+        if (typeof extras === "function" && !extras(data.entries[i])) {
+          continue;
+        }
+        yield id;
       }
-      yield id;
+    } finally {
+      mutex_release();
     }
   }
   close(): void {
