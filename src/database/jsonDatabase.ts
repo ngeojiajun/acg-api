@@ -26,7 +26,11 @@ import {
   IDatabase,
   ReturnType,
 } from "./database";
-import { checkRemoteReferences, constructStatus } from "./integrityTestUtils";
+import {
+  checkRemoteReferencesAnimeEntry,
+  checkRemoteReferencesCharacter,
+  constructStatus,
+} from "./integrityTestUtils";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -73,44 +77,44 @@ export default class JsonDatabase implements IDatabase {
     let mutex_release = await this.#mutex.tryLock();
     try {
       switch (type) {
-        case "ANIME":
-          {
-            let cast = asAnimeEntryInternal(data);
-            if (!cast) {
-              return constructStatus(false, "Invalid data");
-            }
-            //ensure the data is not clashing with current one
-            let iterator = this.iterateKeys(
-              type,
-              (data: AnimeEntryInternal) =>
-                data.name === cast?.name &&
-                data.nameInJapanese === cast.nameInJapanese
+        case "ANIME": {
+          let cast = asAnimeEntryInternal(data);
+          if (!cast) {
+            return constructStatus(false, "Invalid data");
+          }
+          //ensure the data is not clashing with current one
+          let iterator = this.iterateKeys(
+            type,
+            (data: AnimeEntryInternal) =>
+              data.name === cast?.name &&
+              data.nameInJapanese === cast.nameInJapanese
+          );
+          if (!(await iterator.next()).done) {
+            //there are conflicts
+            return constructStatus(
+              false,
+              "The data might be already in database"
             );
-            if (!(await iterator.next()).done) {
-              //there are conflicts
-              return constructStatus(
-                false,
-                "The data might be already in database"
-              );
-            } else {
-              //then perform external reference integrity
-              let status = checkRemoteReferences(this, cast);
-              if (status.success) {
-                //it is ok now lets perform final preparation
-                let lastIdx = (table.entries.length ?? 0) - 1;
-                let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
-                while (findEntry(table, id)) {
-                  id++; //if clash try next
-                }
-                //finally push this
-                let tableIdx = table.entries.push(data) - 1;
-                table.cache[id] = tableIdx;
-                //done
-                return constructStatus(true);
+          } else {
+            //then perform external reference integrity
+            let status = await checkRemoteReferencesAnimeEntry(this, cast);
+            if (status.success) {
+              //it is ok now lets perform final preparation
+              let lastIdx = (table.entries.length ?? 0) - 1;
+              let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
+              while (findEntry(table, id)) {
+                id++; //if clash try next
               }
+              //finally push this
+              let tableIdx = table.entries.push(data) - 1;
+              table.cache[id] = tableIdx;
+              //done
+              return constructStatus(true);
+            } else {
+              return status;
             }
           }
-          break;
+        }
         case "CATEGORY": {
           //try cast to category
           let cast = asCategory(data);
@@ -140,6 +144,45 @@ export default class JsonDatabase implements IDatabase {
           table.cache[id] = tableIdx;
           //done
           return constructStatus(true);
+        }
+        case "CHARACTER": {
+          let cast = asCharacter(data);
+          if (!cast) {
+            return constructStatus(false, "Invalid data");
+          }
+          //ensure the data is not clashing with current one
+          let iterator = this.iterateKeys(
+            type,
+            (data: Character) =>
+              data.name === cast?.name &&
+              data.nameInJapanese === cast.nameInJapanese &&
+              data.gender === cast.gender
+          );
+          if (!(await iterator.next()).done) {
+            //there are conflicts
+            return constructStatus(
+              false,
+              "The data might be already in database"
+            );
+          }
+          //check integrity
+          //then perform external reference integrity
+          let status = await checkRemoteReferencesCharacter(this, cast);
+          if (status.success) {
+            //it is ok now lets perform final preparation
+            let lastIdx = (table.entries.length ?? 0) - 1;
+            let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
+            while (findEntry(table, id)) {
+              id++; //if clash try next
+            }
+            //finally push this
+            let tableIdx = table.entries.push(data) - 1;
+            table.cache[id] = tableIdx;
+            //done
+            return constructStatus(true);
+          } else {
+            return status;
+          }
         }
       }
     } finally {
