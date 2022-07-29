@@ -3,13 +3,22 @@
  */
 
 import { IDatabase } from "./database/database";
-import { checkRemoteReferences } from "./database/integrityTestUtils";
+import {
+  checkRemoteReferencesAnimeEntry,
+  checkRemoteReferencesCharacter,
+} from "./database/integrityTestUtils";
 import JsonDatabase from "./database/jsonDatabase";
 import { AnimeEntryInternal } from "./definitions/anime.internal";
-import { Character } from "./definitions/core";
+import { Character, Status } from "./definitions/core";
 
 function fail(message: string = "Assertion failed"): never {
   throw new Error(message);
+}
+
+function assertSuccess(result: Status) {
+  if (!result.success) {
+    fail(result.message);
+  }
 }
 
 async function main() {
@@ -26,13 +35,10 @@ async function main() {
         fail(
           "Key returned from iterator must be resolvable but it is not in fact"
         );
-      let { success, message } = checkRemoteReferences(db, a);
-      if (!success) {
-        fail(message);
-      }
+      assertSuccess(await checkRemoteReferencesAnimeEntry(db, a));
     }
     console.log("Anime table contain no dangling pointers");
-    console.log("Testing characters table");
+    console.log("Checking...... characters table");
     for await (const k of db.iterateKeys("CHARACTER")) {
       let a = await db.getData<Character>("CHARACTER", k);
       if (!a) {
@@ -40,19 +46,7 @@ async function main() {
           "Key returned from iterator must be resolvable but it is not in fact"
         );
       }
-      //try to resolve the pointer
-      let anime = await db.getData<AnimeEntryInternal>("ANIME", a.presentOn.id);
-      if (!anime) {
-        fail(
-          `Failed to resolve pointer ANIME{id=${a.presentOn.id}} at CHARACTER{id=${k}}`
-        );
-      }
-      //compare the ptrs
-      if (a.presentOn.name !== anime.name) {
-        fail(
-          `Inconsistant value detected!! At ANIME name=${anime.name} but inside CHARACTER it was ${a.presentOn.name}`
-        );
-      }
+      assertSuccess(await checkRemoteReferencesCharacter(db, a));
     }
     console.log("Characters table checked");
   } catch (E) {
