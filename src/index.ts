@@ -33,9 +33,7 @@ app.get("/", (_req: Request, res: Response): void => {
 
 app.post("/login", LoginRoute(auth));
 
-app.use(ProtectedRoute(auth));
-
-app.get("/auth", (_req: Request, res: Response): void => {
+app.get("/auth", ProtectedRoute(auth), (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js! The authenticated version");
 });
 
