@@ -70,49 +70,82 @@ export default class JsonDatabase implements IDatabase {
     if (!table) {
       throw new Error("Fatal error: table not registered yet. bug?");
     }
-    let status: Status = constructStatus(false, "Unimplemented");
     let mutex_release = await this.#mutex.tryLock();
     try {
       switch (type) {
-        case "ANIME": {
-          let cast = asAnimeEntryInternal(data);
-          if (!cast) return constructStatus(false, "Invalid data");
+        case "ANIME":
+          {
+            let cast = asAnimeEntryInternal(data);
+            if (!cast) {
+              return constructStatus(false, "Invalid data");
+            }
+            //ensure the data is not clashing with current one
+            let iterator = this.iterateKeys(
+              type,
+              (data: AnimeEntryInternal) =>
+                data.name === cast?.name &&
+                data.nameInJapanese === cast.nameInJapanese
+            );
+            if (!(await iterator.next()).done) {
+              //there are conflicts
+              return constructStatus(
+                false,
+                "The data might be already in database"
+              );
+            } else {
+              //then perform external reference integrity
+              let status = checkRemoteReferences(this, cast);
+              if (status.success) {
+                //it is ok now lets perform final preparation
+                let lastIdx = (table.entries.length ?? 0) - 1;
+                let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
+                while (findEntry(table, id)) {
+                  id++; //if clash try next
+                }
+                //finally push this
+                let tableIdx = table.entries.push(data) - 1;
+                table.cache[id] = tableIdx;
+                //done
+                return constructStatus(true);
+              }
+            }
+          }
+          break;
+        case "CATEGORY": {
+          //try cast to category
+          let cast = asCategory(data);
+          if (!cast) {
+            return constructStatus(false, "Invalid data");
+          }
           //ensure the data is not clashing with current one
           let iterator = this.iterateKeys(
             type,
-            (data: AnimeEntryInternal) =>
-              data.name === cast?.name &&
-              data.nameInJapanese === cast.nameInJapanese
+            (data: AnimeEntryInternal) => data.name === cast?.name
           );
           if (!(await iterator.next()).done) {
             //there are conflicts
-            status = constructStatus(
+            return constructStatus(
               false,
               "The data might be already in database"
             );
-          } else {
-            //then perform external reference integrity
-            let status = checkRemoteReferences(this, cast);
-            if (status.success) {
-              //it is ok now lets perform final preparation
-              let lastIdx = (table.entries.length ?? 0) - 1;
-              let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
-              while (findEntry(table, id)) {
-                id++; //if clash try next
-              }
-              //finally push this
-              let tableIdx = table.entries.push(data) - 1;
-              table.cache[id] = tableIdx;
-              //done
-              status = constructStatus(true);
-            }
           }
+          //it is ok now lets perform final preparation
+          let lastIdx = (table.entries.length ?? 0) - 1;
+          let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
+          while (findEntry(table, id)) {
+            id++; //if clash try next
+          }
+          //finally push this
+          let tableIdx = table.entries.push(data) - 1;
+          table.cache[id] = tableIdx;
+          //done
+          return constructStatus(true);
         }
       }
     } finally {
       mutex_release();
     }
-    return status;
+    return constructStatus(false, "Unimplemented");
   }
 
   async init() {
