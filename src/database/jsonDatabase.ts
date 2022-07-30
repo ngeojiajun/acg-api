@@ -17,7 +17,7 @@ import {
   People,
   Status,
 } from "../definitions/core";
-import { Cached, findEntry, makeCached } from "../utilities/cached";
+import { addEntry, Cached, findEntry, makeCached } from "../utilities/cached";
 import Mutex from "../utilities/mutex";
 import { allowIfNotProd } from "../utils";
 import {
@@ -100,16 +100,9 @@ export default class JsonDatabase implements IDatabase {
             let status = await checkRemoteReferencesAnimeEntry(this, cast);
             if (status.success) {
               //it is ok now lets perform final preparation
-              let lastIdx = (table.entries.length ?? 0) - 1;
-              let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
-              while (findEntry(table, id)) {
-                id++; //if clash try next
-              }
-              //finally push this
-              let tableIdx = table.entries.push(data) - 1;
-              table.cache[id] = tableIdx;
+              let id = addEntry(table, data);
               //done
-              return constructStatus(true);
+              return constructStatus(true, id);
             } else {
               return status;
             }
@@ -124,7 +117,7 @@ export default class JsonDatabase implements IDatabase {
           //ensure the data is not clashing with current one
           let iterator = this.iterateKeys(
             type,
-            (data: AnimeEntryInternal) => data.name === cast?.name
+            (data: Category) => data.name === cast?.name
           );
           if (!(await iterator.next()).done) {
             //there are conflicts
@@ -134,16 +127,9 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //it is ok now lets perform final preparation
-          let lastIdx = (table.entries.length ?? 0) - 1;
-          let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
-          while (findEntry(table, id)) {
-            id++; //if clash try next
-          }
-          //finally push this
-          let tableIdx = table.entries.push(data) - 1;
-          table.cache[id] = tableIdx;
+          let id = addEntry(table, data);
           //done
-          return constructStatus(true);
+          return constructStatus(true, id);
         }
         case "CHARACTER": {
           let cast = asCharacter(data);
@@ -170,19 +156,36 @@ export default class JsonDatabase implements IDatabase {
           let status = await checkRemoteReferencesCharacter(this, cast);
           if (status.success) {
             //it is ok now lets perform final preparation
-            let lastIdx = (table.entries.length ?? 0) - 1;
-            let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
-            while (findEntry(table, id)) {
-              id++; //if clash try next
-            }
-            //finally push this
-            let tableIdx = table.entries.push(data) - 1;
-            table.cache[id] = tableIdx;
+            let id = addEntry(table, data);
             //done
-            return constructStatus(true);
+            return constructStatus(true, id);
           } else {
             return status;
           }
+        }
+        case "PERSON": {
+          let cast = asPeople(data);
+          if (!cast) {
+            return constructStatus(false, "Invalid data");
+          }
+          //ensure the data is not clashing with current one
+          let iterator = this.iterateKeys(
+            type,
+            (data: People) =>
+              data.name === cast?.name &&
+              data.nameInJapanese === cast.nameInJapanese
+          );
+          if (!(await iterator.next()).done) {
+            //there are conflicts
+            return constructStatus(
+              false,
+              "The data might be already in database"
+            );
+          }
+          //it is ok now lets perform final preparation
+          let id = addEntry(table, data);
+          //done
+          return constructStatus(true, id);
         }
       }
     } finally {

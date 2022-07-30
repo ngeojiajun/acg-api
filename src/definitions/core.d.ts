@@ -4,7 +4,7 @@
 
 export declare type Status = {
   success: boolean;
-  message: string | undefined;
+  message: any | undefined;
 };
 
 /**

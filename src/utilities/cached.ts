@@ -57,3 +57,24 @@ export function findEntry<T extends KeyedEntry>(
   }
   return null;
 }
+
+/**
+ * Add an entry into the table
+ * @param table the table where it is saved
+ * @param data the object to be saved
+ * @returns the new id off the entry added
+ */
+export function addEntry<T extends KeyedEntry>(
+  table: Cached<T>,
+  data: T
+): KeyedEntry["id"] {
+  let lastIdx = (table.entries.length ?? 0) - 1;
+  let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
+  while (findEntry(table, id)) {
+    id++; //if clash try next
+  }
+  //finally push this
+  let tableIdx = table.entries.push(data) - 1;
+  table.cache[id] = tableIdx;
+  return id;
+}
