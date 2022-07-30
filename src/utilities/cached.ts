@@ -14,6 +14,10 @@ export type Cached<T extends KeyedEntry> = {
   cache: {
     [key: KeyedEntry["id"]]: number;
   };
+  /**
+   * Is it is mutated
+   */
+  mutated: boolean;
 };
 
 /**
@@ -29,6 +33,7 @@ export function makeCached<T extends KeyedEntry>(
     throw new Error("Array content is not unique");
   }
   return {
+    mutated: false,
     entries: values,
     cache: {},
   };
@@ -68,6 +73,7 @@ export function addEntry<T extends KeyedEntry>(
   table: Cached<T>,
   data: T
 ): KeyedEntry["id"] {
+  table.mutated = true;
   let lastIdx = (table.entries.length ?? 0) - 1;
   let id = lastIdx > 0 ? table.entries[lastIdx].id : 1;
   while (findEntry(table, id)) {

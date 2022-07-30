@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import {
   AnimeEntryInternal,
@@ -197,16 +197,19 @@ export default class JsonDatabase implements IDatabase {
   async init() {
     let mutex_release = await this.#mutex.tryLock();
     try {
-      this.#loadAndRegister(path.join(this.directory, "animes.json"), "ANIME");
-      this.#loadAndRegister(
+      await this.#loadAndRegister(
+        path.join(this.directory, "animes.json"),
+        "ANIME"
+      );
+      await this.#loadAndRegister(
         path.join(this.directory, "persons.json"),
         "PERSON"
       );
-      this.#loadAndRegister(
+      await this.#loadAndRegister(
         path.join(this.directory, "characters.json"),
         "CHARACTER"
       );
-      this.#loadAndRegister(
+      await this.#loadAndRegister(
         path.join(this.directory, "categories.json"),
         "CATEGORY"
       );
@@ -267,20 +270,60 @@ export default class JsonDatabase implements IDatabase {
     }
   }
   async close(): Promise<void> {
-    console.log("Closing db");
+    let mutex_release = await this.#mutex.tryLock();
+    try {
+      console.log("Closing db");
+      //check the tables for the mutation, if it is there sync to FS
+      if (this.#database.anime && this.#database.anime.mutated) {
+        console.log("Saving ANIME table.....");
+        await this.#saveTable(this.#database.anime.entries, "animes.json");
+        this.#database.anime.mutated = false;
+      }
+      if (this.#database.characters && this.#database.characters.mutated) {
+        console.log("Saving CHARACTER table.....");
+        await this.#saveTable(
+          this.#database.characters.entries,
+          "characters.json"
+        );
+        this.#database.characters.mutated = false;
+      }
+      if (this.#database.categories && this.#database.categories.mutated) {
+        console.log("Saving CATEGORY table.....");
+        await this.#saveTable(
+          this.#database.categories.entries,
+          "categories.json"
+        );
+        this.#database.categories.mutated = false;
+      }
+      if (this.#database.person && this.#database.person.mutated) {
+        console.log("Saving PERSON table.....");
+        await this.#saveTable(this.#database.person.entries, "persons.json");
+        this.#database.person.mutated = false;
+      }
+    } finally {
+      console.log("Saved");
+      mutex_release();
+    }
+  }
+  /**
+   * Save the table as JSON into file
+   * @param table table data
+   * @param filename filename
+   */
+  async #saveTable(table: KeyedEntry[], filename: string) {
+    await writeFile(
+      path.join(this.directory, filename),
+      JSON.stringify(table, null, 2)
+    );
   }
   /**
    * Load and register the file data into the internal tables
    * @param filename the filename to JSON file where the data is located
    * @param type the type of the database it should be injected into
    */
-  #loadAndRegister(filename: string, type: DatabaseTypes) {
+  async #loadAndRegister(filename: string, type: DatabaseTypes) {
     //load the register
-    let data: any = JSON.parse(
-      readFileSync(filename, {
-        encoding: "utf-8",
-      })
-    );
+    let data: any = JSON.parse(await readFile(filename, "utf8"));
     //load it into the database
     this.#validateTable(data, type);
   }
