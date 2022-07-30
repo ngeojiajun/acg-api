@@ -266,7 +266,7 @@ export default class JsonDatabase implements IDatabase {
       mutex_release();
     }
   }
-  close(): void {
+  async close(): Promise<void> {
     console.log("Closing db");
   }
   /**

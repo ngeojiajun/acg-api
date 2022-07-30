@@ -37,17 +37,18 @@ app.get("/auth", ProtectedRoute(auth), (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js! The authenticated version");
 });
 
-const initStart=performance.now();
+const initStart = performance.now();
 db.init().then(() => {
-  console.log(`Initialization done in ${performance.now()-initStart} ms`);
+  console.log(`Initialization done in ${performance.now() - initStart} ms`);
   app.listen(PORT, (): void => {
     console.log(`Server Running here 👉 http://localhost:${PORT}`);
   });
 });
 
-process.on("exit", () => {
-  db.close();
-});
+/**
+ * This call is not relavant later on when deployed to Heroku
+ * Only placed here to ensure the data is flushed before it is taken down
+ */
 process.on("SIGINT", () => {
-  process.exit(0);
+  db.close().then(() => process.exit(0));
 });

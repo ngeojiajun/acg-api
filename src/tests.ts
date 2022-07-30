@@ -53,7 +53,7 @@ async function main() {
     console.error(`Test failed!`);
     console.error(E);
   } finally {
-    db.close();
+    await db.close();
   }
 }
 

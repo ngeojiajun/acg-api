@@ -56,7 +56,7 @@ export declare interface IDatabase {
   /**
    * Shutdown the database
    */
-  close(): void;
+  close(): Promise<void>;
   /**
    * Push data into it
    * @param type the table to which the data is pushed into
