@@ -37,7 +37,9 @@ app.get("/auth", ProtectedRoute(auth), (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js! The authenticated version");
 });
 
+const initStart=performance.now();
 db.init().then(() => {
+  console.log(`Initialization done in ${performance.now()-initStart} ms`);
   app.listen(PORT, (): void => {
     console.log(`Server Running here 👉 http://localhost:${PORT}`);
   });
