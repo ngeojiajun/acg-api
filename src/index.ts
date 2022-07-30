@@ -4,6 +4,7 @@
  * Instead, put those into separated directory
  */
 import express, { Application, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 import AnimeApi from "./api/anime";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import ProtectedRoute from "./authentication/middlewares";
@@ -20,8 +21,16 @@ auth.init();
 
 const app: Application = express();
 const PORT = process.env.PORT || 8000;
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.disable("x-powered-by");
+
+app.use(apiLimiter);
 
 app.use(express.json());
 
@@ -31,11 +40,22 @@ app.get("/", (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js!");
 });
 
-app.post("/login", LoginRoute(auth));
-
 app.get("/auth", ProtectedRoute(auth), (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js! The authenticated version");
 });
+
+//use a separated limiter for this
+app.post(
+  "/login",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    message: "Too much login attempts, please try again later",
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+  }),
+  LoginRoute(auth)
+);
 
 const initStart = performance.now();
 db.init().then(() => {
