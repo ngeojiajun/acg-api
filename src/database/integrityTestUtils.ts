@@ -32,7 +32,7 @@ export async function checkRemoteReferencesAnimeEntry(
     if (!data) {
       return constructStatus(
         false,
-        `Failed to resolve pointer CHARACTER{id=${k}} at ANIME{id=${entry.id}}`
+        `Failed to resolve pointer PERSON{id=${k}} at ANIME{id=${entry.id}}`
       );
     }
   }
