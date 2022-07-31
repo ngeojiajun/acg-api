@@ -18,22 +18,32 @@ export function LoginRoute(
       });
       return;
     }
-    provider.login(username, password).then((result) => {
-      if (!result) {
-        response
-          .status(401)
-          .json({
-            error: "Wrong credential",
-          })
-          .end();
-      } else {
-        response
-          .status(200)
-          .json({
-            token: result,
-          })
-          .end();
-      }
-    });
+    if (provider.canPerformAuth()) {
+      provider.login(username, password).then((result) => {
+        if (!result) {
+          response
+            .status(401)
+            .json({
+              error: "Wrong credential",
+            })
+            .end();
+        } else {
+          response
+            .status(200)
+            .json({
+              token: result,
+            })
+            .end();
+        }
+      });
+    } else {
+      //fail the authentication immediately when the provider is not available
+      response
+        .status(401)
+        .json({
+          error: "Wrong credential",
+        })
+        .end();
+    }
   };
 }

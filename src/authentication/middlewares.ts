@@ -10,7 +10,11 @@ export default function Middleware(
     next: NextFunction
   ): void {
     let header = request.get("Authorization");
-    if (!header || !header.startsWith("Bearer ")) {
+    if (
+      !provider.canPerformAuth() ||
+      !header ||
+      !header.startsWith("Bearer ")
+    ) {
       response
         .status(401)
         .json({

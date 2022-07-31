@@ -52,4 +52,7 @@ export default class BasicAuthenticationProider implements AuthProvider {
   async query(_token: string, _key: string) {
     throw new Error("Unimplemented");
   }
+  canPerformAuth(): boolean {
+    return this.#mainPassword.length > 0;
+  }
 }

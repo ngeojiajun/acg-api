@@ -21,4 +21,8 @@ export interface AuthProvider {
    * Query the properties of authenticated user
    */
   query: (token: any, key: string) => Promise<any>;
+  /**
+   * Check weather authentication is possible to perform in current status
+   */
+  canPerformAuth: () => boolean;
 }
