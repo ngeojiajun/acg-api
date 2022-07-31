@@ -5,6 +5,7 @@
  */
 import express, { Application, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
+import AdminApi from "./api/admin";
 import AnimeApi from "./api/anime";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import ProtectedRoute from "./authentication/middlewares";
@@ -40,9 +41,7 @@ app.get("/", (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js!");
 });
 
-app.get("/auth", ProtectedRoute(auth), (_req: Request, res: Response): void => {
-  res.send("Hello Typescript with Node.js! The authenticated version");
-});
+app.get("/admin", new AdminApi(db, auth).asApplication());
 
 //use a separated limiter for this
 app.post(
