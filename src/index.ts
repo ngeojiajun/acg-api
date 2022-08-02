@@ -8,7 +8,6 @@ import rateLimit from "express-rate-limit";
 import AdminApi from "./api/admin";
 import AnimeApi from "./api/anime";
 import BasicAuthenticationProider from "./authentication/auth_base";
-import ProtectedRoute from "./authentication/middlewares";
 import { LoginRoute } from "./authentication/routes";
 import { IDatabase } from "./database/database";
 import JsonDatabase from "./database/jsonDatabase";
