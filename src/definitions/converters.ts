@@ -1,6 +1,7 @@
 /**
  * Serialization related to anime.d.ts
  */
+import { defineVerifiedChain } from "../utilities/sanitise";
 import { ACGEntry, AnimeEntry } from "./anime";
 import {
   BilingualKeyedEntry,
@@ -28,6 +29,7 @@ export function asKeyedEntry(table: any): KeyedEntry | null {
   }
   return table as KeyedEntry;
 }
+defineVerifiedChain(asKeyedEntry, "id", "name");
 
 export function asBilingualKeyEntry(table: any): BilingualKeyedEntry | null {
   if (!asKeyedEntry(table)) {
@@ -38,6 +40,7 @@ export function asBilingualKeyEntry(table: any): BilingualKeyedEntry | null {
   }
   return table as BilingualKeyedEntry;
 }
+defineVerifiedChain(asBilingualKeyEntry, asKeyedEntry, "nameInJapanese");
 
 /**
  * Given the `table` try convert it into `Category`
@@ -46,10 +49,12 @@ export function asBilingualKeyEntry(table: any): BilingualKeyedEntry | null {
 export function asCategory(table: any): Category | null {
   return asKeyedEntry(table);
 }
+defineVerifiedChain(asCategory, asKeyedEntry);
 
 export function asPeople(table: any): People | null {
   return asBilingualKeyEntry(table);
 }
+defineVerifiedChain(asPeople, asBilingualKeyEntry);
 
 /**
  * Given the `table` try convert it into `ACGEntry`
@@ -85,10 +90,20 @@ export function asACGEntry(table: any): ACGEntry | null {
 
   return table;
 }
+defineVerifiedChain(
+  asACGEntry,
+  asBilingualKeyEntry,
+  "description",
+  "year",
+  "category",
+  "publisher",
+  "author"
+);
 
 export function asAnimeEntry(table: any): AnimeEntry | null {
   return asACGEntry(table);
 }
+defineVerifiedChain(asAnimeEntry, asACGEntry);
 
 export function asCharacterPresence(table: any): CharacterPresence | null {
   if (!asKeyedEntry(table)) {
@@ -99,6 +114,7 @@ export function asCharacterPresence(table: any): CharacterPresence | null {
   }
   return table as CharacterPresence;
 }
+defineVerifiedChain(asCharacterPresence, asKeyedEntry, "type");
 
 export function asCharacter(table: any): Character | null {
   if (!asBilingualKeyEntry(table)) {
@@ -115,6 +131,7 @@ export function asCharacter(table: any): Character | null {
   }
   return table;
 }
+defineVerifiedChain(asCharacter, asBilingualKeyEntry, "gender", "presentOn");
 
 /**
  * Try to parse the `table` as array of something
