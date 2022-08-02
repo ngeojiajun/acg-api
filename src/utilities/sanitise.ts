@@ -37,7 +37,7 @@ export function castAndStripObject<T>(
   if (!casted) {
     return null;
   }
-  if (!Array.isArray((converter as any).checkList)) {
+  if (!Array.isArray((converter as any).checkedList)) {
     return { ...casted };
   }
   //if there is the check list lets strip the unneeded
