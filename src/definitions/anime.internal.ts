@@ -1,9 +1,11 @@
 import { AnimeEntry } from "./anime";
 import { asArrayOf, asBilingualKeyEntry } from "./converters";
+import { defineVerifiedChain } from "../utilities/sanitise";
 
 /**
  * Internal representation of the database
- * DONT ship this to client
+ * DONT ship this to client as response
+ * only take this as request
  */
 export type AnimeEntryInternal = Omit<
   AnimeEntry,
@@ -54,3 +56,13 @@ export function asAnimeEntryInternal(table: any): AnimeEntryInternal | null {
   }
   return table;
 }
+
+defineVerifiedChain(
+  asAnimeEntryInternal,
+  asBilingualKeyEntry,
+  "description",
+  "year",
+  "category",
+  "publisher",
+  "author"
+);
