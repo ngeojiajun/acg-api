@@ -28,6 +28,13 @@ export function defineVerifiedChain(
   (base as any).checkedList = [...checkedProps];
 }
 
+/**
+ * Perform the cast as `as***` functions but also strip off the unneeded properties
+ * @param object Object to cast
+ * @param converter The function which performs the conversion, use `defineVerifiedChain(....)` to define the list of the retained properties
+ * @returns The casted object or null on failure
+ * @notes if the list is not present it act like an alias to the converter
+ */
 export function castAndStripObject<T>(
   object: any,
   converter: (e: any) => T | null
