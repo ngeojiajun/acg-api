@@ -19,6 +19,7 @@ import {
 } from "../definitions/core";
 import { addEntry, Cached, findEntry, makeCached } from "../utilities/cached";
 import Mutex from "../utilities/mutex";
+import { castAndStripObject } from "../utilities/sanitise";
 import { allowIfNotProd } from "../utils";
 import {
   DatabaseTypes,
@@ -78,7 +79,7 @@ export default class JsonDatabase implements IDatabase {
     try {
       switch (type) {
         case "ANIME": {
-          let cast = asAnimeEntryInternal(data);
+          let cast = castAndStripObject(data, asAnimeEntryInternal);
           if (!cast) {
             return constructStatus(false, "Invalid data");
           }
@@ -110,7 +111,7 @@ export default class JsonDatabase implements IDatabase {
         }
         case "CATEGORY": {
           //try cast to category
-          let cast = asCategory(data);
+          let cast = castAndStripObject(data, asCategory);
           if (!cast) {
             return constructStatus(false, "Invalid data");
           }
@@ -132,7 +133,7 @@ export default class JsonDatabase implements IDatabase {
           return constructStatus(true, id);
         }
         case "CHARACTER": {
-          let cast = asCharacter(data);
+          let cast = castAndStripObject(data, asCharacter);
           if (!cast) {
             return constructStatus(false, "Invalid data");
           }
@@ -164,7 +165,7 @@ export default class JsonDatabase implements IDatabase {
           }
         }
         case "PERSON": {
-          let cast = asPeople(data);
+          let cast = castAndStripObject(data, asPeople);
           if (!cast) {
             return constructStatus(false, "Invalid data");
           }
@@ -241,7 +242,10 @@ export default class JsonDatabase implements IDatabase {
     } finally {
       mutex_release();
     }
-    return entry;
+    if (!entry) {
+      return null;
+    }
+    return { ...entry };
   }
   async *iterateKeys(
     type: DatabaseTypes,
