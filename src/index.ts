@@ -7,13 +7,21 @@ import express, { Application, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import AdminApi from "./api/admin";
 import AnimeApi from "./api/anime";
+import { errorHandler } from "./api/commonUtils";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import { LoginRoute } from "./authentication/routes";
-import { IDatabase } from "./database/database";
 import JsonDatabase from "./database/jsonDatabase";
 
 //load the data
-let db: IDatabase = new JsonDatabase("./data/");
+let db: JsonDatabase = new JsonDatabase("./data/");
+
+//Check environment variables and disable saving when empheral flag is passed
+if (process.env.JSON_DB_EMPHERAL) {
+  console.warn(
+    "Warning: opening database in empheral mode. Changes will not be saved"
+  );
+  db.shouldSaveWhenClose = false;
+}
 
 //init the authorization provider
 let auth: BasicAuthenticationProider = new BasicAuthenticationProider();
@@ -40,7 +48,7 @@ app.get("/", (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js!");
 });
 
-app.get("/admin", new AdminApi(db, auth).asApplication());
+app.use("/admin", new AdminApi(db, auth).asApplication());
 
 //use a separated limiter for this
 app.post(
@@ -62,6 +70,8 @@ db.init().then(() => {
     console.log(`Server Running here 👉 http://localhost:${PORT}`);
   });
 });
+
+app.use(errorHandler);
 
 /**
  * This call is not relavant later on when deployed to Heroku
