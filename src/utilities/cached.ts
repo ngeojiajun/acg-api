@@ -79,6 +79,8 @@ export function addEntry<T extends KeyedEntry>(
   while (findEntry(table, id)) {
     id++; //if clash try next
   }
+  //overwrite ids
+  data.id = id;
   //finally push this
   let tableIdx = table.entries.push(data) - 1;
   table.cache[id] = tableIdx;
