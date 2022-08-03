@@ -1,4 +1,3 @@
-import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import {
   AnimeEntryInternal,
@@ -19,6 +18,7 @@ import {
 } from "../definitions/core";
 import { addEntry, Cached, findEntry, makeCached } from "../utilities/cached";
 import Mutex from "../utilities/mutex";
+import { parseNDJson, writeNDJson } from "../utilities/ndjson";
 import { castAndStripObject } from "../utilities/sanitise";
 import { allowIfNotProd } from "../utils";
 import {
@@ -199,19 +199,19 @@ export default class JsonDatabase implements IDatabase {
     let mutex_release = await this.#mutex.tryLock();
     try {
       await this.#loadAndRegister(
-        path.join(this.directory, "animes.json"),
+        path.join(this.directory, "animes.ndjson"),
         "ANIME"
       );
       await this.#loadAndRegister(
-        path.join(this.directory, "persons.json"),
+        path.join(this.directory, "persons.ndjson"),
         "PERSON"
       );
       await this.#loadAndRegister(
-        path.join(this.directory, "characters.json"),
+        path.join(this.directory, "characters.ndjson"),
         "CHARACTER"
       );
       await this.#loadAndRegister(
-        path.join(this.directory, "categories.json"),
+        path.join(this.directory, "categories.ndjson"),
         "CATEGORY"
       );
     } finally {
@@ -280,14 +280,14 @@ export default class JsonDatabase implements IDatabase {
       //check the tables for the mutation, if it is there sync to FS
       if (this.#database.anime && this.#database.anime.mutated) {
         console.log("Saving ANIME table.....");
-        await this.#saveTable(this.#database.anime.entries, "animes.json");
+        await this.#saveTable(this.#database.anime.entries, "animes.ndjson");
         this.#database.anime.mutated = false;
       }
       if (this.#database.characters && this.#database.characters.mutated) {
         console.log("Saving CHARACTER table.....");
         await this.#saveTable(
           this.#database.characters.entries,
-          "characters.json"
+          "characters.ndjson"
         );
         this.#database.characters.mutated = false;
       }
@@ -295,13 +295,13 @@ export default class JsonDatabase implements IDatabase {
         console.log("Saving CATEGORY table.....");
         await this.#saveTable(
           this.#database.categories.entries,
-          "categories.json"
+          "categories.ndjson"
         );
         this.#database.categories.mutated = false;
       }
       if (this.#database.person && this.#database.person.mutated) {
         console.log("Saving PERSON table.....");
-        await this.#saveTable(this.#database.person.entries, "persons.json");
+        await this.#saveTable(this.#database.person.entries, "persons.ndjson");
         this.#database.person.mutated = false;
       }
     } finally {
@@ -315,10 +315,7 @@ export default class JsonDatabase implements IDatabase {
    * @param filename filename
    */
   async #saveTable(table: KeyedEntry[], filename: string) {
-    await writeFile(
-      path.join(this.directory, filename),
-      JSON.stringify(table, null, 2)
-    );
+    await writeNDJson(path.join(this.directory, filename), table);
   }
   /**
    * Load and register the file data into the internal tables
@@ -326,8 +323,8 @@ export default class JsonDatabase implements IDatabase {
    * @param type the type of the database it should be injected into
    */
   async #loadAndRegister(filename: string, type: DatabaseTypes) {
-    //load the register
-    let data: any = JSON.parse(await readFile(filename, "utf8"));
+    //load the file
+    let data: any[] = await parseNDJson(filename);
     //load it into the database
     this.#validateTable(data, type);
   }
