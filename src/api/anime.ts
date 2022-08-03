@@ -7,7 +7,7 @@ import {
 } from "../definitions/anime.internal";
 import { Category, Character, People } from "../definitions/core";
 import { tryParseInteger } from "../utils";
-import { nonExistantRoute } from "./commonUtils";
+import { errorHandler, nonExistantRoute } from "./commonUtils";
 
 export default class AnimeApi {
   #database: IDatabase;
@@ -16,10 +16,12 @@ export default class AnimeApi {
   }
   asApplication(): Application {
     const app = express();
+    app.disable("x-powered-by");
     app.get("/all", this.#getAnimes.bind(this));
-    app.use("/:id/characters", this.#getAnimeCharactersById.bind(this));
-    app.use("/:id", this.#getAnimeById.bind(this));
+    app.get("/:id/characters", this.#getAnimeCharactersById.bind(this));
+    app.get("/:id", this.#getAnimeById.bind(this));
     app.use(nonExistantRoute);
+    app.use(errorHandler);
     return app;
   }
 
