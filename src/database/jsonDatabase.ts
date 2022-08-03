@@ -57,6 +57,7 @@ export default class JsonDatabase implements IDatabase {
    * The name of directory that the database should load from
    */
   directory: string;
+  shouldSaveWhenClose: boolean = true;
   #database: InternalParsedMap;
   #mutex: Mutex;
   constructor(directory: string) {
@@ -274,6 +275,7 @@ export default class JsonDatabase implements IDatabase {
     }
   }
   async close(): Promise<void> {
+    if (!this.shouldSaveWhenClose) return;
     let mutex_release = await this.#mutex.tryLock();
     try {
       console.log("Closing db");
