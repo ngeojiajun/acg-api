@@ -33,10 +33,15 @@ export default class Mutex {
    */
   async tryLockRead(): Promise<Function> {
     if (this.#allow_concurrent_read) {
-      if (this.#reader_mutex_unlock === undefined) {
+      if (this.#reader_mutex_unlock === undefined && !this.#locked) {
         //if the mutex is not present create one
         this.#reader_mutex_unlock = await this.tryLock();
         this.#readers = 1;
+      } else if (this.#locked) {
+        //when it is attempted on modification it might causes deadlock
+        //this usually happens when a mutator call accessor for verification
+        //returning a empty function will avoid this problem
+        return () => {};
       } else {
         //else increament the stuffs by one
         this.#readers++;
