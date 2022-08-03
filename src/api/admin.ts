@@ -6,9 +6,9 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { asCharacter, asPeople } from "../definitions/converters";
+import { asCategory, asCharacter, asPeople } from "../definitions/converters";
 import { People, Status, Character, Category } from "../definitions/core";
-import { nonExistantRoute } from "./commonUtils";
+import { errorHandler, nonExistantRoute } from "./commonUtils";
 
 /**
  * Contain routes for the administration use
@@ -22,12 +22,14 @@ export default class AdminApi {
   }
   asApplication(): Application {
     const app = express();
+    app.disable("x-powered-by");
     if (this.#authProvider.canPerformAuth() && !process.env.DISABLE_ADMIN) {
       app.use(ProtectedRoute(this.#authProvider));
       app.post("/anime", this.addAnimeEntry.bind(this));
       app.post("/person", this.addPeopleEntry.bind(this));
       app.post("/character", this.addCharacterEntry.bind(this));
       app.post("/category", this.addCategoryEntry.bind(this));
+      app.use(errorHandler);
     } else {
       console.warn(
         "The admin API is disabled as either the provider reported that the authentication is impossible"
@@ -140,7 +142,7 @@ export default class AdminApi {
         this.#send400(response);
         return;
       }
-      let body: Category | null = asCharacter(request.body);
+      let body: Category | null = asCategory(request.body);
       if (!body) {
         this.#send400(response);
         return;
