@@ -18,6 +18,7 @@ export default class AnimeApi {
     const app = express();
     app.disable("x-powered-by");
     app.get("/all", this.#getAnimes.bind(this));
+    app.get("/search", this.#searchAnimes.bind(this));
     app.get("/:id/characters", this.#getAnimeCharactersById.bind(this));
     app.get("/:id", this.#getAnimeById.bind(this));
     app.use(nonExistantRoute);
@@ -122,6 +123,40 @@ export default class AnimeApi {
       next(e);
     }
   }
+
+  /**
+   * Get search animes
+   * @route /search
+   */
+  async #searchAnimes(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      let { q } = request.query;
+      if (!q || typeof q !== "string" || q.trim().length === 0) {
+        response.status(400).json({ error: "Missing query string" }).end();
+        return;
+      }
+      let response_json = [];
+      for await (const key of this.#database.iterateKeys("ANIME")) {
+        //get every single anime entry
+        //note this one always success because the validation done
+        let entry = await this.#dbGetAnimeById(key);
+        if (
+          entry &&
+          entry.name.toLocaleLowerCase().includes(q.toLocaleLowerCase())
+        ) {
+          response_json.push(entry);
+        }
+      }
+      response.status(200).type("json").json(response_json).end();
+    } catch (e) {
+      next(e);
+    }
+  }
+
   /**
    * Get all animes
    * @route /:id
