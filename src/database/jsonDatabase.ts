@@ -74,126 +74,45 @@ export default class JsonDatabase implements IDatabase {
     type: T,
     data: DatabaseTypesMapping[T]
   ): Promise<Status> {
-    let table: Cached<KeyedEntry> | null = this.#getTable(type);
-    if (!table) {
-      throw new Error("Fatal error: table not registered yet. bug?");
-    }
-    let mutex_release = await this.#mutex.tryLock();
-    try {
-      switch (type) {
-        case "ANIME": {
-          let cast = castAndStripObject(data, asAnimeEntryInternal);
-          if (!cast) {
-            return constructStatus(false, "Invalid data");
-          }
-          //ensure the data is not clashing with current one
-          let iterator = this.iterateKeys(
-            type,
-            (data: AnimeEntryInternal) =>
-              data.name === cast?.name &&
-              data.nameInJapanese === cast.nameInJapanese
-          );
-          if (!(await iterator.next()).done) {
-            //there are conflicts
-            return constructStatus(
-              false,
-              "The data might be already in database"
-            );
-          } else {
-            //then perform external reference integrity
-            let status = await checkRemoteReferencesAnimeEntry(this, cast);
-            if (status.success) {
-              //it is ok now lets perform final preparation
-              let id = addEntry(table, data);
-              //done
-              return constructStatus(true, id);
-            } else {
-              return status;
-            }
-          }
-        }
-        case "CATEGORY": {
-          //try cast to category
-          let cast = castAndStripObject(data, asCategory);
-          if (!cast) {
-            return constructStatus(false, "Invalid data");
-          }
-          //ensure the data is not clashing with current one
-          let iterator = this.iterateKeys(
-            type,
-            (data: Category) => data.name === cast?.name
-          );
-          if (!(await iterator.next()).done) {
-            //there are conflicts
-            return constructStatus(
-              false,
-              "The data might be already in database"
-            );
-          }
-          //it is ok now lets perform final preparation
-          let id = addEntry(table, data);
-          //done
-          return constructStatus(true, id);
-        }
-        case "CHARACTER": {
-          let cast = castAndStripObject(data, asCharacter);
-          if (!cast) {
-            return constructStatus(false, "Invalid data");
-          }
-          //ensure the data is not clashing with current one
-          let iterator = this.iterateKeys(
-            type,
-            (data: Character) =>
-              data.name === cast?.name &&
-              data.nameInJapanese === cast.nameInJapanese &&
-              data.gender === cast.gender
-          );
-          if (!(await iterator.next()).done) {
-            //there are conflicts
-            return constructStatus(
-              false,
-              "The data might be already in database"
-            );
-          }
-          //check integrity
-          //then perform external reference integrity
-          let status = await checkRemoteReferencesCharacter(this, cast);
-          if (status.success) {
-            //it is ok now lets perform final preparation
-            let id = addEntry(table, data);
-            //done
-            return constructStatus(true, id);
-          } else {
-            return status;
-          }
-        }
-        case "PERSON": {
-          let cast = castAndStripObject(data, asPeople);
-          if (!cast) {
-            return constructStatus(false, "Invalid data");
-          }
-          //ensure the data is not clashing with current one
-          let iterator = this.iterateKeys(
-            type,
-            (data: People) =>
-              data.name === cast?.name &&
-              data.nameInJapanese === cast.nameInJapanese
-          );
-          if (!(await iterator.next()).done) {
-            //there are conflicts
-            return constructStatus(
-              false,
-              "The data might be already in database"
-            );
-          }
-          //it is ok now lets perform final preparation
-          let id = addEntry(table, data);
-          //done
-          return constructStatus(true, id);
-        }
-      }
-    } finally {
-      mutex_release();
+    switch (type) {
+      case "ANIME":
+        return this.#addDataInternal<"ANIME", AnimeEntryInternal>(
+          type,
+          data as AnimeEntryInternal,
+          [
+            { key: "name", op: "EQUALS_INSENSITIVE" },
+            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+          ],
+          asAnimeEntryInternal
+        );
+      case "CATEGORY":
+        return this.#addDataInternal<"CATEGORY", Category>(
+          type,
+          data,
+          [{ key: "name", op: "EQUALS_INSENSITIVE" }],
+          asCategory
+        );
+      case "CHARACTER":
+        return this.#addDataInternal<"CHARACTER", Character>(
+          type,
+          data as Character,
+          [
+            { key: "name", op: "EQUALS_INSENSITIVE" },
+            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+            { key: "gender", op: "EQUALS" },
+          ],
+          asCharacter
+        );
+      case "PERSON":
+        return this.#addDataInternal<"PERSON", People>(
+          type,
+          data as People,
+          [
+            { key: "name", op: "EQUALS_INSENSITIVE" },
+            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+          ],
+          asPeople
+        );
     }
     return constructStatus(false, "Unimplemented");
   }
@@ -212,7 +131,7 @@ export default class JsonDatabase implements IDatabase {
     type: T,
     data: dataType,
     equality: Condition<dataType>[],
-    converter: (e: any) => dataType
+    converter: (e: any) => dataType | null
   ): Promise<Status> {
     let table: Cached<KeyedEntry> | null = this.#getTable(type);
     if (!table) {
