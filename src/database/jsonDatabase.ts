@@ -1,3 +1,4 @@
+import { equal } from "assert";
 import path from "path";
 import {
   AnimeEntryInternal,
@@ -197,6 +198,47 @@ export default class JsonDatabase implements IDatabase {
     return constructStatus(false, "Unimplemented");
   }
 
+  /**
+   * Internal version of addData
+   * @param type the type of database to input into
+   * @param data the data to add
+   * @param equality the conditions for equality check
+   * @param converter the converter function to use
+   */
+  async #addDataInternal<
+    T extends DatabaseTypes,
+    dataType extends KeyedEntry = DatabaseTypesMapping[T]
+  >(
+    type: T,
+    data: dataType,
+    equality: Condition<dataType>[],
+    converter: (e: any) => dataType
+  ): Promise<Status> {
+    let table: Cached<KeyedEntry> | null = this.#getTable(type);
+    if (!table) {
+      throw new Error("Fatal error: table not registered yet. bug?");
+    }
+    let mutex_release = await this.#mutex.tryLock();
+    try {
+      let cast: dataType | null = castAndStripObject(data, converter);
+      if (!cast) {
+        return constructStatus(false, "Invalid data");
+      }
+      //ensure the data is not clashing with current one
+      let iterator = this.iterateKeysIf(type, cast, equality);
+      if (!(await iterator.next()).done) {
+        //there are conflicts
+        return constructStatus(false, "The data might be already in database");
+      }
+      //it is ok now lets perform final preparation
+      let id = addEntry(table, data);
+      //done
+      return constructStatus(true, id);
+    } finally {
+      mutex_release();
+    }
+  }
+
   async init() {
     let mutex_release = await this.#mutex.tryLock();
     try {
@@ -275,7 +317,7 @@ export default class JsonDatabase implements IDatabase {
       mutex_release();
     }
   }
-  async *interateKeysIf<
+  async *iterateKeysIf<
     T extends DatabaseTypes,
     dataType extends KeyedEntry = DatabaseTypesMapping[T]
   >(
