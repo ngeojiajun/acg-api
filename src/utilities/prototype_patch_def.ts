@@ -1,6 +1,3 @@
-/**
- * Ambient definition for the patches
- */
 interface String {
   /**
    *Same like includes() but it is case insensitive

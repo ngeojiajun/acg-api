@@ -1,4 +1,3 @@
-import { equal } from "assert";
 import path from "path";
 import {
   AnimeEntryInternal,
@@ -34,6 +33,7 @@ import {
   checkRemoteReferencesCharacter,
   constructStatus,
 } from "./integrityTestUtils";
+import "../utilities/prototype_patch_def";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -83,7 +83,8 @@ export default class JsonDatabase implements IDatabase {
             { key: "name", op: "EQUALS_INSENSITIVE" },
             { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
           ],
-          asAnimeEntryInternal
+          asAnimeEntryInternal,
+          checkRemoteReferencesAnimeEntry
         );
       case "CATEGORY":
         return this.#addDataInternal<"CATEGORY", Category>(
@@ -101,7 +102,8 @@ export default class JsonDatabase implements IDatabase {
             { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
             { key: "gender", op: "EQUALS" },
           ],
-          asCharacter
+          asCharacter,
+          checkRemoteReferencesCharacter
         );
       case "PERSON":
         return this.#addDataInternal<"PERSON", People>(
@@ -123,6 +125,7 @@ export default class JsonDatabase implements IDatabase {
    * @param data the data to add
    * @param equality the conditions for equality check
    * @param converter the converter function to use
+   * @param verifier function to verify the data
    */
   async #addDataInternal<
     T extends DatabaseTypes,
@@ -131,7 +134,9 @@ export default class JsonDatabase implements IDatabase {
     type: T,
     data: dataType,
     equality: Condition<dataType>[],
-    converter: (e: any) => dataType | null
+    converter: (e: any) => dataType | null,
+    verifier: (db: IDatabase, e: dataType) => Promise<Status> = async (_, __) =>
+      constructStatus(true)
   ): Promise<Status> {
     let table: Cached<KeyedEntry> | null = this.#getTable(type);
     if (!table) {
@@ -148,6 +153,11 @@ export default class JsonDatabase implements IDatabase {
       if (!(await iterator.next()).done) {
         //there are conflicts
         return constructStatus(false, "The data might be already in database");
+      }
+      //check for the status
+      let status = await verifier(this, cast);
+      if (!status.success) {
+        return status;
       }
       //it is ok now lets perform final preparation
       let id = addEntry(table, data);
