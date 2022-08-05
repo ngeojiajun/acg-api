@@ -22,6 +22,7 @@ import { parseNDJson, writeNDJson } from "../utilities/ndjson";
 import { castAndStripObject } from "../utilities/sanitise";
 import { allowIfNotProd } from "../utils";
 import {
+  Condition,
   DatabaseTypes,
   DatabaseTypesMapping,
   IDatabase,
@@ -266,6 +267,94 @@ export default class JsonDatabase implements IDatabase {
         let id = data.entries[i].id;
         data.cache[id] = i;
         if (typeof extras === "function" && !extras(data.entries[i])) {
+          continue;
+        }
+        yield id;
+      }
+    } finally {
+      mutex_release();
+    }
+  }
+  async *interateKeysIf<
+    T extends DatabaseTypes,
+    dataType extends KeyedEntry = DatabaseTypesMapping[T]
+  >(
+    type: T,
+    another?: dataType,
+    conditions?: Condition<dataType>[]
+  ): AsyncGenerator<number> {
+    let data: Cached<dataType> | null = this.#getTable(
+      type
+    ) as Cached<dataType>;
+    if (!data) {
+      throw new Error("Fatal error: table not registered yet. bug?");
+    }
+    //lock the table
+    let mutex_release = await this.#mutex.tryLockRead();
+    //construct the test function
+    function check(data: dataType): boolean {
+      if (!conditions) {
+        return true;
+      }
+      if (!another) {
+        return false;
+      }
+      for (const condition of conditions) {
+        const lhs = data[condition.key];
+        const rhs = another[condition.key];
+        switch (condition.op) {
+          case "EQUALS":
+            if (lhs !== rhs) {
+              return false;
+            }
+            break;
+          case "GREATER":
+            if (!(lhs > rhs)) {
+              return false;
+            }
+            break;
+          case "LESSER":
+            if (!(lhs < rhs)) {
+              return false;
+            }
+            break;
+          case "EQUALS_INSENSITIVE":
+            if (typeof lhs !== "string" || typeof rhs !== "string") {
+              throw new Error("Cannot perform operation on non string object");
+            }
+            if (!lhs.equalsIgnoreCase(rhs)) {
+              return false;
+            }
+            break;
+          case "INCLUDES":
+            if (typeof lhs !== "string" || typeof rhs !== "string") {
+              throw new Error("Cannot perform operation on non string object");
+            }
+            if (!lhs.includes(rhs)) {
+              return false;
+            }
+            break;
+          case "INCLUDES_INSENSITIVE":
+            if (typeof lhs !== "string" || typeof rhs !== "string") {
+              throw new Error("Cannot perform operation on non string object");
+            }
+            if (!lhs.includesIgnoreCase(rhs)) {
+              return false;
+            }
+            break;
+        }
+      }
+      return true;
+    }
+    try {
+      /**
+       * Iterate the objects and remember the relationship of the id:index
+       */
+      for (let i = 0; i < data.entries.length; i++) {
+        let id = data.entries[i].id;
+        data.cache[id] = i;
+        //check the data against another side
+        if (conditions && !check(data.entries[i])) {
           continue;
         }
         yield id;

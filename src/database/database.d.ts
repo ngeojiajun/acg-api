@@ -5,7 +5,13 @@
 
 import { AnimeEntry } from "../definitions/anime";
 import { AnimeEntryInternal } from "../definitions/anime.internal";
-import { Category, Character, People, Status } from "../definitions/core";
+import {
+  Category,
+  Character,
+  KeyedEntry,
+  People,
+  Status,
+} from "../definitions/core";
 
 export declare type DatabaseTypes =
   | "ANIME"
@@ -13,6 +19,18 @@ export declare type DatabaseTypes =
   | "PERSON"
   | "CATEGORY";
 
+export declare type CompareOperations =
+  | "EQUALS"
+  | "GREATER"
+  | "LESSER"
+  | "EQUALS_INSENSITIVE"
+  | "INCLUDES"
+  | "INCLUDES_INSENSITIVE";
+
+export declare type Condition<T extends KeyedEntry> = {
+  key: keyof T;
+  op: CompareOperations;
+};
 /**
  * Only for putData
  */
@@ -53,6 +71,17 @@ export declare interface IDatabase {
    * Iterate every single possible valid keys
    */
   iterateKeys: (type: DatabaseTypes, extras?: any) => AsyncGenerator<number>;
+  /**
+   * Iterate every single possible valid if it fulfill the condition
+   */
+  interateKeysIf: <
+    T extends DatabaseTypes,
+    dataType extends KeyedEntry = DatabaseTypesMapping[T]
+  >(
+    type: T,
+    another?: dataType,
+    conditions?: Condition<dataType>[]
+  ) => AsyncGenerator<number>;
   /**
    * Shutdown the database
    */
