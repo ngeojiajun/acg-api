@@ -74,7 +74,7 @@ export declare interface IDatabase {
   /**
    * Iterate every single possible valid if it fulfill the condition
    */
-  interateKeysIf: <
+  iterateKeysIf: <
     T extends DatabaseTypes,
     dataType extends KeyedEntry = DatabaseTypesMapping[T]
   >(
