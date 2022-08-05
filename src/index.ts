@@ -11,6 +11,10 @@ import { errorHandler } from "./api/commonUtils";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import { LoginRoute } from "./authentication/routes";
 import JsonDatabase from "./database/jsonDatabase";
+/**
+ * This file export nothing but instead patches the Vanila stuffs
+ */
+import "./utilities/prototype_patch";
 
 //load the data
 let db: JsonDatabase = new JsonDatabase("./data/");
