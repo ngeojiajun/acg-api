@@ -75,12 +75,6 @@ export async function checkRemoteReferencesCharacter(
             `Failed to resolve pointer ANIME{id=${entry.presentOn.id}} at CHARACTER{id=${entry.id}}`
           );
         }
-        if (data.name !== entry.presentOn.name) {
-          return constructStatus(
-            false,
-            `Inconsistant value detected!! At ANIME {id=${entry.id}} name=${data.name} but inside CHARACTER it was ${entry.presentOn.name}`
-          );
-        }
       }
       break;
     default:

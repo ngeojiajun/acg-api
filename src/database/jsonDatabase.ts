@@ -158,36 +158,6 @@ export default class JsonDatabase implements IDatabase {
           //commit the changes
           this.#database.anime!.mutated = true;
           Object.assign(data, patched);
-          //now perform patches to knownly effected entries
-          //get the list of the effected characters
-          let iterator = this.iterateKeysIf<"CHARACTER">(
-            "CHARACTER",
-            undefined,
-            [
-              {
-                key: "presentOn",
-                op: "EVAL_JS", //note that EVAL_JS has very high performance penalty so use with care
-                rhs: (entry: CharacterPresence) => {
-                  if (entry.type !== "anime") {
-                    return false;
-                  }
-                  if (entry.id === id) {
-                    return true;
-                  } else {
-                    return false;
-                  }
-                },
-              },
-            ]
-          );
-          for await (const key of iterator) {
-            let data = await this.#getData("CHARACTER", id, asCharacter, false);
-            //copy the name into it
-            if (data) {
-              data.presentOn.name = patched.name;
-            }
-          }
-          this.#database.characters!.mutated = true;
           return constructStatus(true);
         }
         case "CATEGORY": {

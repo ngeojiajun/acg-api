@@ -305,10 +305,9 @@ export default class AnimeApi {
             "CHARACTER",
             entry
           );
-          //taint the result so it always refer to the latest data
-          //this have no effect on real data
           if (data) {
-            data.presentOn.name = anime_data.name;
+            //add the name into it
+            (data.presentOn as any).name = anime_data.name;
             result.push(data);
           }
         }

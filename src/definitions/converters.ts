@@ -106,15 +106,16 @@ export function asAnimeEntry(table: any): AnimeEntry | null {
 defineVerifiedChain(asAnimeEntry, asACGEntry);
 
 export function asCharacterPresence(table: any): CharacterPresence | null {
-  if (!asKeyedEntry(table)) {
+  if (typeof table !== "object") {
     return null;
   }
-  if (!asEnumeration(table.type, ["anime", "game", "comic"])) {
-    return null;
-  }
+  if (typeof table.id !== "number")
+    if (!asEnumeration(table.type, ["anime", "game", "comic"])) {
+      return null;
+    }
   return table as CharacterPresence;
 }
-defineVerifiedChain(asCharacterPresence, asKeyedEntry, "type");
+defineVerifiedChain(asCharacterPresence, "number", "type");
 
 export function asCharacter(table: any): Character | null {
   if (!asBilingualKeyEntry(table)) {
