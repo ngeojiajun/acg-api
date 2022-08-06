@@ -5,10 +5,7 @@
 import "./prototype_patch_def";
 const collator = new Intl.Collator(undefined, { sensitivity: "accent" });
 String.prototype.includesIgnoreCase = function (rhs: string) {
-  if (!this._lower) {
-    this._lower = this.toLocaleLowerCase();
-  }
-  return this._lower.includes(rhs.toLocaleLowerCase());
+  return this.toLocaleLowerCase().includes(rhs.toLocaleLowerCase());
 };
 
 String.prototype.equalsIgnoreCase = function (rhs: string) {
