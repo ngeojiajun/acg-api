@@ -25,6 +25,7 @@ export default class AnimeApi {
     app.disable("x-powered-by");
     app.get("/all", this.#getAnimes.bind(this));
     app.get("/search", this.#searchAnimes.bind(this));
+    app.get("/categories", this.#listCategories.bind(this));
     app.get("/category/:id", this.#getAnimesByCategory.bind(this));
     app.get("/:id/characters", this.#getAnimeCharactersById.bind(this));
     app.get("/:id", this.#getAnimeById.bind(this));
@@ -108,6 +109,30 @@ export default class AnimeApi {
       id,
       this.#decodeAnimeEntry.bind(this)
     );
+  }
+
+  /**
+   * Get all categories
+   * @route /categories
+   */
+  async #listCategories(
+    _request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      let response_json: Category[] = [];
+      for await (const key of this.#database.iterateKeys("CATEGORY")) {
+        //note this one always success because the validation done
+        let entry = await this.#database.getData("CATEGORY", key, asCategory);
+        if (entry) {
+          response_json.push(entry);
+        }
+      }
+      response.status(200).type("json").json(response_json).end();
+    } catch (e) {
+      next(e);
+    }
   }
 
   /**
