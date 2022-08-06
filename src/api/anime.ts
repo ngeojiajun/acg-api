@@ -1,11 +1,17 @@
 import express, { Application, NextFunction, Request, Response } from "express";
-import { IDatabase } from "../database/database";
+import { Condition, IDatabase } from "../database/database";
 import { AnimeEntry } from "../definitions/anime";
 import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { Category, Character, People } from "../definitions/core";
+import { asCategory } from "../definitions/converters";
+import {
+  Category,
+  Character,
+  CharacterPresence,
+  People,
+} from "../definitions/core";
 import { tryParseInteger } from "../utils";
 import { errorHandler, nonExistantRoute } from "./commonUtils";
 
@@ -19,6 +25,7 @@ export default class AnimeApi {
     app.disable("x-powered-by");
     app.get("/all", this.#getAnimes.bind(this));
     app.get("/search", this.#searchAnimes.bind(this));
+    app.get("/category/:id", this.#getAnimesByCategory.bind(this));
     app.get("/:id/characters", this.#getAnimeCharactersById.bind(this));
     app.get("/:id", this.#getAnimeById.bind(this));
     app.use(nonExistantRoute);
@@ -140,21 +147,13 @@ export default class AnimeApi {
         return;
       }
       let response_json = [];
-      //construct the another side to filter
-      let query: AnimeEntryInternal = {
-        id: 0,
-        name: q,
-        nameInJapanese: q,
-        description: "",
-        year: 0,
-      };
       for await (const key of this.#database.iterateKeysIf(
         "ANIME",
-        query,
+        null,
         [
-          { key: "name", op: "INCLUDES_INSENSITIVE" },
-          { key: "nameInJapanese", op: "INCLUDES_INSENSITIVE" },
-        ],
+          { key: "name", op: "INCLUDES_INSENSITIVE", rhs: q },
+          { key: "nameInJapanese", op: "INCLUDES_INSENSITIVE", rhs: q },
+        ] as Condition<AnimeEntryInternal, "INCLUDES_INSENSITIVE">[],
         "OR"
       )) {
         //get every single anime entry
@@ -165,6 +164,43 @@ export default class AnimeApi {
         }
       }
       response.status(200).type("json").json(response_json).end();
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  /**
+   * Get search animes
+   * @route /category/:id
+   */
+  async #getAnimesByCategory(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //try to get the id
+      let id = tryParseInteger(request.params.id);
+      if (!id) {
+        this.#sendEntryNotFound(response);
+        return;
+      } else if (!(await this.#database.getData("CATEGORY", id, asCategory))) {
+        //return 404 when the category id itself is not existant
+        this.#sendEntryNotFound(response);
+        return;
+      } else {
+        //search all animes related to the specified id
+        let result: AnimeEntry[] = [];
+        let iterator = this.#database.iterateKeysIf<"ANIME">("ANIME", null, [
+          { key: "category", op: "INCLUDES_SET", rhs: [id] },
+        ]);
+        //add those into the result set
+        for await (const key of iterator) {
+          let data = await this.#dbGetAnimeById(key);
+          if (data) result.push(data);
+        }
+        response.status(200).type("json").json(result);
+      }
     } catch (e) {
       next(e);
     }
@@ -211,36 +247,31 @@ export default class AnimeApi {
     try {
       //try to get the id
       let id = tryParseInteger(request.params.id);
-      if (!id) {
+      if (!id || !(await this.#database.getData("ANIME", id))) {
         this.#sendEntryNotFound(response);
         return;
       } else {
         //search all characters related to the specified id
         let result: Character[] = [];
-        let resolved_name: string | null = null;
-        let iterator = this.#database.iterateKeys(
+        let iterator = this.#database.iterateKeysIf<"CHARACTER">(
           "CHARACTER",
-          (entry: Character) => {
-            if (entry.presentOn.type !== "anime") {
-              return false;
-            }
-            if (entry.presentOn.id === id) {
-              //found
-              if (resolved_name) {
-                if (resolved_name !== entry.presentOn.name) {
-                  console.warn(
-                    `Inconsistency detected on the records. Expecting ${resolved_name} got ${entry.presentOn.name} for id ${id}`
-                  );
+          undefined,
+          [
+            {
+              key: "presentOn",
+              op: "EVAL_JS", //note that EVAL_JS has very high performance penalty so use with care
+              rhs: (entry: CharacterPresence) => {
+                if (entry.type !== "anime") {
                   return false;
-                } else {
-                  resolved_name = entry.presentOn.name;
                 }
-              }
-              return true;
-            } else {
-              return false;
-            }
-          }
+                if (entry.id === id) {
+                  return true;
+                } else {
+                  return false;
+                }
+              },
+            },
+          ]
         );
         //add those into the result set
         for await (const entry of iterator) {
@@ -250,12 +281,7 @@ export default class AnimeApi {
           );
           if (data) result.push(data);
         }
-        //if the result empty check is the database weather the id is inexistant
-        if (result.length > 0 || (await this.#database.getData("ANIME", id))) {
-          response.status(200).type("json").json(result);
-        } else {
-          this.#sendEntryNotFound(response);
-        }
+        response.status(200).type("json").json(result);
       }
     } catch (e) {
       next(e);
