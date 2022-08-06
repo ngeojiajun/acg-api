@@ -252,7 +252,7 @@ export default class JsonDatabase implements IDatabase {
     dataType extends KeyedEntry = DatabaseTypesMapping[T]
   >(
     type: T,
-    another?: dataType,
+    another?: dataType | null,
     conditions?: Condition<dataType>[],
     chaining: ConditionChaining = "AND"
   ): AsyncGenerator<number> {
@@ -269,15 +269,15 @@ export default class JsonDatabase implements IDatabase {
       if (!conditions) {
         return true;
       }
-      if (!another) {
-        return false;
-      }
       if (conditions.length <= 0) {
         return true;
       }
       for (const condition of conditions) {
+        if (!condition.rhs && !another) {
+          return false;
+        }
         const lhs = data[condition.key];
-        const rhs = another[condition.key];
+        const rhs = condition.rhs ?? another?.[condition.key];
         switch (condition.op) {
           case "EQUALS":
             {
@@ -366,6 +366,18 @@ export default class JsonDatabase implements IDatabase {
                 break;
               }
             }
+            if (!result && chaining === "AND") {
+              return false;
+            } else if (result && chaining === "OR") {
+              return true;
+            }
+          }
+          case "EVAL_JS": {
+            if (!condition.rhs) {
+              throw new Error("Cannot eval null");
+            }
+            let _condition = condition as Condition<dataType, "EVAL_JS">;
+            let result = _condition.rhs?.(lhs);
             if (!result && chaining === "AND") {
               return false;
             } else if (result && chaining === "OR") {

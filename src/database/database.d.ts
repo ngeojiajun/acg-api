@@ -26,16 +26,35 @@ export declare type CompareOperations =
   | "EQUALS_INSENSITIVE"
   | "INCLUDES"
   | "INCLUDES_INSENSITIVE"
-  | "INCLUDES_SET";
+  | "INCLUDES_SET"
+  | "EVAL_JS";
+
+/**
+ * Defines the valid operand type to compare explicitly
+ */
+export declare type CompareOperationOperand = {
+  EQUALS: any;
+  GREATER: number | string;
+  LESSER: number | string;
+  EQUALS_INSENSITIVE: string;
+  INCLUDES: string;
+  INCLUDES_INSENSITIVE: string;
+  INCLUDES_SET: Array<any>;
+  EVAL_JS: (e: any) => boolean;
+};
 
 /**
  * Defines how the conditions should be chained
  */
 export declare type ConditionChaining = "AND" | "OR";
 
-export declare type Condition<T extends KeyedEntry> = {
+export declare type Condition<
+  T extends KeyedEntry,
+  OP extends CompareOperations = CompareOperations
+> = {
   key: keyof T;
-  op: CompareOperations;
+  op: OP;
+  rhs?: CompareOperationOperand[OP];
 };
 /**
  * Only for putData
@@ -85,7 +104,7 @@ export declare interface IDatabase {
     dataType extends KeyedEntry = DatabaseTypesMapping[T]
   >(
     type: T,
-    another?: dataType,
+    another?: dataType | null,
     conditions?: Condition<dataType>[],
     chaining?: ConditionChaining
   ) => AsyncGenerator<number>;
