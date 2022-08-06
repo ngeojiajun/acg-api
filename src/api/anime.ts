@@ -272,7 +272,8 @@ export default class AnimeApi {
     try {
       //try to get the id
       let id = tryParseInteger(request.params.id);
-      if (!id || !(await this.#database.getData("ANIME", id))) {
+      let anime_data: AnimeEntryInternal | null = null;
+      if (!id || !(anime_data = await this.#database.getData("ANIME", id))) {
         this.#sendEntryNotFound(response);
         return;
       } else {
@@ -304,7 +305,12 @@ export default class AnimeApi {
             "CHARACTER",
             entry
           );
-          if (data) result.push(data);
+          //taint the result so it always refer to the latest data
+          //this have no effect on real data
+          if (data) {
+            data.presentOn.name = anime_data.name;
+            result.push(data);
+          }
         }
         response.status(200).type("json").json(result);
       }
