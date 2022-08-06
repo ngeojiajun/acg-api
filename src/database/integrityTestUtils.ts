@@ -39,7 +39,7 @@ export async function checkRemoteReferencesAnimeEntry(
   //now test the categories
   if (entry.category) {
     for (const key of entry.category) {
-      let data = db.getData("CATEGORY", key);
+      let data = await db.getData("CATEGORY", key);
       if (!data) {
         return constructStatus(
           false,
