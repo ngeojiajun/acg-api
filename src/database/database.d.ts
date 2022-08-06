@@ -27,6 +27,11 @@ export declare type CompareOperations =
   | "INCLUDES"
   | "INCLUDES_INSENSITIVE";
 
+/**
+ * Defines how the conditions should be chained
+ */
+export declare type ConditionChaining = "AND" | "OR";
+
 export declare type Condition<T extends KeyedEntry> = {
   key: keyof T;
   op: CompareOperations;
@@ -80,7 +85,8 @@ export declare interface IDatabase {
   >(
     type: T,
     another?: dataType,
-    conditions?: Condition<dataType>[]
+    conditions?: Condition<dataType>[],
+    chaining?: ConditionChaining
   ) => AsyncGenerator<number>;
   /**
    * Shutdown the database

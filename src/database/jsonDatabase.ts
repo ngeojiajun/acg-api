@@ -23,6 +23,7 @@ import { castAndStripObject } from "../utilities/sanitise";
 import { allowIfNotProd } from "../utils";
 import {
   Condition,
+  ConditionChaining,
   DatabaseTypes,
   DatabaseTypesMapping,
   IDatabase,
@@ -252,7 +253,8 @@ export default class JsonDatabase implements IDatabase {
   >(
     type: T,
     another?: dataType,
-    conditions?: Condition<dataType>[]
+    conditions?: Condition<dataType>[],
+    chaining: ConditionChaining = "AND"
   ): AsyncGenerator<number> {
     let data: Cached<dataType> | null = this.#getTable(
       type
@@ -270,52 +272,69 @@ export default class JsonDatabase implements IDatabase {
       if (!another) {
         return false;
       }
+      if (conditions.length <= 0) {
+        return true;
+      }
       for (const condition of conditions) {
         const lhs = data[condition.key];
         const rhs = another[condition.key];
         switch (condition.op) {
           case "EQUALS":
-            if (lhs !== rhs) {
+            if (lhs !== rhs && chaining === "AND") {
               return false;
+            } else if (chaining === "OR") {
+              return true;
             }
             break;
           case "GREATER":
-            if (!(lhs > rhs)) {
+            if (!(lhs > rhs) && chaining === "AND") {
               return false;
+            } else if (chaining === "OR") {
+              return true;
             }
             break;
           case "LESSER":
-            if (!(lhs < rhs)) {
+            if (!(lhs < rhs) && chaining === "AND") {
               return false;
+            } else if (chaining === "OR") {
+              return true;
             }
             break;
           case "EQUALS_INSENSITIVE":
             if (typeof lhs !== "string" || typeof rhs !== "string") {
               throw new Error("Cannot perform operation on non string object");
             }
-            if (!lhs.equalsIgnoreCase(rhs)) {
+            if (!lhs.equalsIgnoreCase(rhs) && chaining === "AND") {
               return false;
+            } else if (chaining === "OR") {
+              return true;
             }
             break;
           case "INCLUDES":
             if (typeof lhs !== "string" || typeof rhs !== "string") {
               throw new Error("Cannot perform operation on non string object");
             }
-            if (!lhs.includes(rhs)) {
+            if (!lhs.includes(rhs) && chaining === "AND") {
               return false;
+            } else if (chaining === "OR") {
+              return true;
             }
             break;
           case "INCLUDES_INSENSITIVE":
             if (typeof lhs !== "string" || typeof rhs !== "string") {
               throw new Error("Cannot perform operation on non string object");
             }
-            if (!lhs.includesIgnoreCase(rhs)) {
+            if (!lhs.includesIgnoreCase(rhs) && chaining === "AND") {
               return false;
+            } else if (chaining === "OR") {
+              return true;
             }
             break;
         }
       }
-      return true;
+      //the chaining ops are OR this return statement will only reach when all are not
+      //fulfilled
+      return chaining === "AND";
     }
     try {
       /**
