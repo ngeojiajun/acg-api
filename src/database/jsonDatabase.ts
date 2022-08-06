@@ -12,6 +12,7 @@ import {
 import {
   Category,
   Character,
+  CharacterPresence,
   KeyedEntry,
   People,
   Status,
@@ -19,7 +20,7 @@ import {
 import { addEntry, Cached, findEntry, makeCached } from "../utilities/cached";
 import Mutex from "../utilities/mutex";
 import { parseNDJson, writeNDJson } from "../utilities/ndjson";
-import { castAndStripObject } from "../utilities/sanitise";
+import { castAndStripObject, patchObjectSecure } from "../utilities/sanitise";
 import { allowIfNotProd } from "../utils";
 import {
   Condition,
@@ -120,6 +121,146 @@ export default class JsonDatabase implements IDatabase {
     return constructStatus(false, "Unimplemented");
   }
 
+  async updateData<T extends DatabaseTypes>(
+    type: T,
+    id: KeyedEntry["id"],
+    delta: Partial<Omit<DatabaseTypesMapping[T], "id">>
+  ): Promise<Status> {
+    //take a mutex
+    const mutex_release = await this.#mutex.tryLock();
+    try {
+      switch (type) {
+        case "ANIME": {
+          //get an effective copy of it
+          let data = await this.#getData(type, id, asAnimeEntryInternal, false);
+          if (!data) {
+            return constructStatus(false, "Entry not found");
+          }
+          //try to perform patch on it
+          let patched = patchObjectSecure(data, delta, asAnimeEntryInternal, [
+            "id",
+          ]);
+          if (!patched) {
+            return constructStatus(false, "Invalid patch");
+          }
+          //now perform few checks
+          //ensure the new data is valid for the table integrity
+          let status: Status = await checkRemoteReferencesAnimeEntry(
+            this,
+            patched
+          );
+          if (!status.success) {
+            return constructStatus(
+              false,
+              "Cannot patch the data as " + status.message
+            );
+          }
+          //commit the changes
+          this.#database.anime!.mutated = true;
+          Object.assign(data, patched);
+          //now perform patches to knownly effected entries
+          //get the list of the effected characters
+          let iterator = this.iterateKeysIf<"CHARACTER">(
+            "CHARACTER",
+            undefined,
+            [
+              {
+                key: "presentOn",
+                op: "EVAL_JS", //note that EVAL_JS has very high performance penalty so use with care
+                rhs: (entry: CharacterPresence) => {
+                  if (entry.type !== "anime") {
+                    return false;
+                  }
+                  if (entry.id === id) {
+                    return true;
+                  } else {
+                    return false;
+                  }
+                },
+              },
+            ]
+          );
+          for await (const key of iterator) {
+            let data = await this.#getData("CHARACTER", id, asCharacter, false);
+            //copy the name into it
+            if (data) {
+              data.presentOn.name = patched.name;
+            }
+          }
+          this.#database.characters!.mutated = true;
+          return constructStatus(true);
+        }
+        case "CATEGORY": {
+          //get an effective copy of it
+          let data = await this.#getData(type, id, asAnimeEntryInternal, false);
+          if (!data) {
+            return constructStatus(false, "Entry not found");
+          }
+          //try to perform patch on it
+          let patched = patchObjectSecure(data, delta, asAnimeEntryInternal, [
+            "id",
+          ]);
+          if (!patched) {
+            return constructStatus(false, "Invalid patch");
+          }
+          //no remote check needed for this
+          //just patch it directly
+          this.#database.categories!.mutated = true;
+          Object.assign(data, patched);
+          return constructStatus(true);
+        }
+        case "PERSON": {
+          //get an effective copy of it
+          let data = await this.#getData(type, id, asPeople, false);
+          if (!data) {
+            return constructStatus(false, "Entry not found");
+          }
+          //try to perform patch on it
+          let patched = patchObjectSecure(data, delta, asPeople, ["id"]);
+          if (!patched) {
+            return constructStatus(false, "Invalid patch");
+          }
+          //no remote check needed for this
+          //just patch it directly
+          this.#database.person!.mutated = true;
+          Object.assign(data, patched);
+          return constructStatus(true);
+        }
+        case "CHARACTER": {
+          //get an effective copy of it
+          let data = await this.#getData(type, id, asCharacter, false);
+          if (!data) {
+            return constructStatus(false, "Entry not found");
+          }
+          //try to perform patch on it
+          let patched = patchObjectSecure(data, delta, asCharacter, ["id"]);
+          if (!patched) {
+            return constructStatus(false, "Invalid patch");
+          }
+          //check for remote references
+          //ensure the new data is valid for the table integrity
+          let status: Status = await checkRemoteReferencesCharacter(
+            this,
+            patched
+          );
+          if (!status.success) {
+            return constructStatus(
+              false,
+              "Cannot patch the data as " + status.message
+            );
+          }
+          //just patch it directly
+          this.#database.characters!.mutated = true;
+          Object.assign(data, patched);
+          return constructStatus(true);
+        }
+      }
+      return constructStatus(false, "Unimplemented");
+    } finally {
+      mutex_release();
+    }
+  }
+
   /**
    * Internal version of addData
    * @param type the type of database to input into
@@ -195,12 +336,27 @@ export default class JsonDatabase implements IDatabase {
       mutex_release();
     }
   }
-  async getData<T>(
+  getData<T>(
     type: DatabaseTypes,
     id: number,
     converter?:
       | ((data: any, db: IDatabase) => ReturnType<T> | Promise<ReturnType<T>>)
       | undefined
+  ): Promise<ReturnType<T>> {
+    //alias to the #getData(...,true)
+    return this.#getData<T>(type, id, converter, true);
+  }
+  /**
+   * Refer the getData for its original prototype
+   * @param copy should the copy of the data be given or not
+   */
+  async #getData<T>(
+    type: DatabaseTypes,
+    id: number,
+    converter?:
+      | ((data: any, db: IDatabase) => ReturnType<T> | Promise<ReturnType<T>>)
+      | undefined,
+    copy: boolean = false
   ): Promise<ReturnType<T>> {
     if (!converter) {
       converter = (data: any) => data as T;
@@ -222,7 +378,11 @@ export default class JsonDatabase implements IDatabase {
     if (!entry) {
       return null;
     }
-    return { ...entry };
+    if (copy) {
+      return JSON.parse(JSON.stringify(entry)) as T;
+    } else {
+      return entry;
+    }
   }
   async *iterateKeys(
     type: DatabaseTypes,

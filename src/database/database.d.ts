@@ -123,4 +123,18 @@ export declare interface IDatabase {
     type: T,
     data: DatabaseTypesMapping[T]
   ) => Promise<Status>;
+  /**
+   * Update the data with id=`id` with the delta provided
+   * @param type the table to which the data is pushed into
+   * @param id the id of the entry with the patch will be applied against
+   * @param delta the data to push into, the type check will be done once again to avoid hard cast
+   * @returns result
+   * @notes same as `addNotes()` all references will be synchronized, so it is an very expensive operation on
+   * table that have multiple childs
+   */
+  updateData: <T extends DatabaseTypes>(
+    type: T,
+    id: KeyedEntry["id"],
+    delta: Partial<Omit<DatabaseTypesMapping[T], "id">>
+  ) => Promise<Status>;
 }
