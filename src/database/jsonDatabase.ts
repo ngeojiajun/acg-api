@@ -280,54 +280,78 @@ export default class JsonDatabase implements IDatabase {
         const rhs = another[condition.key];
         switch (condition.op) {
           case "EQUALS":
-            if (lhs !== rhs && chaining === "AND") {
-              return false;
-            } else if (chaining === "OR") {
-              return true;
+            {
+              const result = lhs === rhs;
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
+              }
             }
             break;
           case "GREATER":
-            if (!(lhs > rhs) && chaining === "AND") {
-              return false;
-            } else if (chaining === "OR") {
-              return true;
+            {
+              const result = lhs > rhs;
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
+              }
             }
             break;
           case "LESSER":
-            if (!(lhs < rhs) && chaining === "AND") {
-              return false;
-            } else if (chaining === "OR") {
-              return true;
+            {
+              const result = lhs < rhs;
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
+              }
             }
             break;
           case "EQUALS_INSENSITIVE":
-            if (typeof lhs !== "string" || typeof rhs !== "string") {
-              throw new Error("Cannot perform operation on non string object");
-            }
-            if (!lhs.equalsIgnoreCase(rhs) && chaining === "AND") {
-              return false;
-            } else if (chaining === "OR") {
-              return true;
+            {
+              if (typeof lhs !== "string" || typeof rhs !== "string") {
+                throw new Error(
+                  "Cannot perform operation on non string object"
+                );
+              }
+              const result = lhs.equalsIgnoreCase(rhs);
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
+              }
             }
             break;
           case "INCLUDES":
-            if (typeof lhs !== "string" || typeof rhs !== "string") {
-              throw new Error("Cannot perform operation on non string object");
-            }
-            if (!lhs.includes(rhs) && chaining === "AND") {
-              return false;
-            } else if (chaining === "OR") {
-              return true;
+            {
+              if (typeof lhs !== "string" || typeof rhs !== "string") {
+                throw new Error(
+                  "Cannot perform operation on non string object"
+                );
+              }
+              const result = lhs.includes(rhs);
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
+              }
             }
             break;
           case "INCLUDES_INSENSITIVE":
-            if (typeof lhs !== "string" || typeof rhs !== "string") {
-              throw new Error("Cannot perform operation on non string object");
-            }
-            if (!lhs.includesIgnoreCase(rhs) && chaining === "AND") {
-              return false;
-            } else if (chaining === "OR") {
-              return true;
+            {
+              if (typeof lhs !== "string" || typeof rhs !== "string") {
+                throw new Error(
+                  "Cannot perform operation on non string object"
+                );
+              }
+              const result = lhs.includesIgnoreCase(rhs);
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
+              }
             }
             break;
         }
