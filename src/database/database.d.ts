@@ -25,7 +25,8 @@ export declare type CompareOperations =
   | "LESSER"
   | "EQUALS_INSENSITIVE"
   | "INCLUDES"
-  | "INCLUDES_INSENSITIVE";
+  | "INCLUDES_INSENSITIVE"
+  | "INCLUDES_SET";
 
 /**
  * Defines how the conditions should be chained

@@ -354,6 +354,24 @@ export default class JsonDatabase implements IDatabase {
               }
             }
             break;
+          case "INCLUDES_SET": {
+            //check weather the set in rhs included in lhs
+            if (!Array.isArray(lhs) || !Array.isArray(rhs)) {
+              throw new Error("Cannot perform operation on non array object");
+            }
+            let result = false;
+            for (const g of rhs) {
+              if (lhs.includes(g)) {
+                result = true;
+                break;
+              }
+            }
+            if (!result && chaining === "AND") {
+              return false;
+            } else if (result && chaining === "OR") {
+              return true;
+            }
+          }
         }
       }
       //the chaining ops are OR this return statement will only reach when all are not
