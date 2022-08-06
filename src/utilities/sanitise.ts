@@ -39,7 +39,7 @@ export function castAndStripObject<T>(
   object: any,
   converter: (e: any) => T | null
 ): T | null {
-  //first try to case to the T
+  //first try to cast to the T
   let casted = converter(object);
   if (!casted) {
     return null;
@@ -56,4 +56,38 @@ export function castAndStripObject<T>(
       delete (casted as any)[e];
     });
   return casted;
+}
+
+/**
+ * Patch the `object` using the delta provided
+ * @param object The original object that is going to be patched
+ * @param delta The update to be applied
+ * @param converter The function which converts to the original type of the object. Required for validation
+ * @param ignore List of keys that should not be patched
+ * @returns the patched object or null if the patch produced an invalid object
+ */
+export function patchObjectSecure<T>(
+  object: T,
+  delta: any,
+  converter: (e: any) => T | null,
+  ignore: string[] = ["id"]
+): T | null {
+  //make a copy of the object
+  let copied: any = { ...object };
+  let checkedList: Array<string> = (converter as any).checkedList;
+  if (!Array.isArray(checkedList)) {
+    throw new Error(
+      "Cannot safely patch the object, the checked list must present"
+    );
+  }
+  //for each found properties excluding those outside the checkedList and inside
+  //the ignore list
+  let keys = Object.keys(delta).filter(
+    (t) => !ignore.includes(t) && checkedList.includes(t)
+  );
+  //copy those into the main object
+  for (const key of keys) {
+    copied[key] = delta[key];
+  }
+  return converter(copied);
 }
