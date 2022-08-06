@@ -140,14 +140,27 @@ export default class AnimeApi {
         return;
       }
       let response_json = [];
-      for await (const key of this.#database.iterateKeys("ANIME")) {
+      //construct the another side to filter
+      let query: AnimeEntryInternal = {
+        id: 0,
+        name: q,
+        nameInJapanese: q,
+        description: "",
+        year: 0,
+      };
+      for await (const key of this.#database.iterateKeysIf(
+        "ANIME",
+        query,
+        [
+          { key: "name", op: "INCLUDES_INSENSITIVE" },
+          { key: "nameInJapanese", op: "INCLUDES_INSENSITIVE" },
+        ],
+        "OR"
+      )) {
         //get every single anime entry
         //note this one always success because the validation done
         let entry = await this.#dbGetAnimeById(key);
-        if (
-          entry &&
-          entry.name.toLocaleLowerCase().includes(q.toLocaleLowerCase())
-        ) {
+        if (entry) {
           response_json.push(entry);
         }
       }
