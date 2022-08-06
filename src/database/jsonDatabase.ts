@@ -354,36 +354,40 @@ export default class JsonDatabase implements IDatabase {
               }
             }
             break;
-          case "INCLUDES_SET": {
-            //check weather the set in rhs included in lhs
-            if (!Array.isArray(lhs) || !Array.isArray(rhs)) {
-              throw new Error("Cannot perform operation on non array object");
-            }
-            let result = false;
-            for (const g of rhs) {
-              if (lhs.includes(g)) {
-                result = true;
-                break;
+          case "INCLUDES_SET":
+            {
+              //check weather the set in rhs included in lhs
+              if (!Array.isArray(lhs) || !Array.isArray(rhs)) {
+                throw new Error("Cannot perform operation on non array object");
+              }
+              let result = false;
+              for (const g of rhs) {
+                if (lhs.includes(g)) {
+                  result = true;
+                  break;
+                }
+              }
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
               }
             }
-            if (!result && chaining === "AND") {
-              return false;
-            } else if (result && chaining === "OR") {
-              return true;
+            break;
+          case "EVAL_JS":
+            {
+              if (!condition.rhs) {
+                throw new Error("Cannot eval null");
+              }
+              let _condition = condition as Condition<dataType, "EVAL_JS">;
+              let result = _condition.rhs?.(lhs);
+              if (!result && chaining === "AND") {
+                return false;
+              } else if (result && chaining === "OR") {
+                return true;
+              }
             }
-          }
-          case "EVAL_JS": {
-            if (!condition.rhs) {
-              throw new Error("Cannot eval null");
-            }
-            let _condition = condition as Condition<dataType, "EVAL_JS">;
-            let result = _condition.rhs?.(lhs);
-            if (!result && chaining === "AND") {
-              return false;
-            } else if (result && chaining === "OR") {
-              return true;
-            }
-          }
+            break;
         }
       }
       //the chaining ops are OR this return statement will only reach when all are not
