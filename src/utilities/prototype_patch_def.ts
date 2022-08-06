@@ -7,4 +7,8 @@ interface String {
    *Same like equals() but it is case insensitive
    */
   equalsIgnoreCase: (rhs: string) => boolean;
+  /**
+   * Cached lower case string
+   */
+  _lower: string;
 }
