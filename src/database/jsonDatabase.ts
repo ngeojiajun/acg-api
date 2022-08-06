@@ -152,6 +152,9 @@ export default class JsonDatabase implements IDatabase {
       //ensure the data is not clashing with current one
       let iterator = this.iterateKeysIf(type, cast, equality);
       if (!(await iterator.next()).done) {
+        //ask iterator to release the mutex immediately (NOP but good practise)
+        //the mutex is not actually locked by iterator as the writing lock is owned
+        iterator.next(true);
         //there are conflicts
         return constructStatus(false, "The data might be already in database");
       }
@@ -405,7 +408,8 @@ export default class JsonDatabase implements IDatabase {
         if (conditions && !check(data.entries[i])) {
           continue;
         }
-        yield id;
+        let stop: boolean = (yield id) as boolean;
+        if (stop) break;
       }
     } finally {
       mutex_release();
