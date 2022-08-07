@@ -109,13 +109,15 @@ export function asCharacterPresence(table: any): CharacterPresence | null {
   if (typeof table !== "object") {
     return null;
   }
-  if (typeof table.id !== "number")
-    if (!asEnumeration(table.type, ["anime", "game", "comic"])) {
-      return null;
-    }
+  if (typeof table.id !== "number") {
+    return null;
+  }
+  if (!asEnumeration(table.type, ["anime", "game", "comic"])) {
+    return null;
+  }
   return table as CharacterPresence;
 }
-defineVerifiedChain(asCharacterPresence, "number", "type");
+defineVerifiedChain(asCharacterPresence, "id", "type");
 
 export function asCharacter(table: any): Character | null {
   if (!asBilingualKeyEntry(table)) {
