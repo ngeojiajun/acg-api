@@ -129,12 +129,21 @@ export function asCharacter(table: any): Character | null {
   ) {
     return null;
   }
-  if (!asCharacterPresence(table.presentOn)) {
+  if (typeof table.description !== "string") {
+    return null;
+  }
+  if (!asArrayOf<CharacterPresence>(table.presentOn, asCharacterPresence)) {
     return null;
   }
   return table;
 }
-defineVerifiedChain(asCharacter, asBilingualKeyEntry, "gender", "presentOn");
+defineVerifiedChain(
+  asCharacter,
+  asBilingualKeyEntry,
+  "gender",
+  "description",
+  "presentOn"
+);
 
 /**
  * Try to parse the `table` as array of something

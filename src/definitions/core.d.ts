@@ -31,5 +31,6 @@ export declare type CharacterPresence = {
 
 export declare type Character = BilingualKeyedEntry & {
   gender: Gender;
-  presentOn: CharacterPresence;
+  description: string;
+  presentOn: CharacterPresence[];
 };

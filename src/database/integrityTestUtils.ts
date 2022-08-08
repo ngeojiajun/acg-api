@@ -62,23 +62,25 @@ export async function checkRemoteReferencesCharacter(
   entry: Character
 ): Promise<Status> {
   //check the remote referemces
-  switch (entry.presentOn.type) {
-    case "anime":
-      {
-        let data: AnimeEntryInternal | null = await db.getData(
-          "ANIME",
-          entry.presentOn.id
-        );
-        if (!data) {
-          return constructStatus(
-            false,
-            `Failed to resolve pointer ANIME{id=${entry.presentOn.id}} at CHARACTER{id=${entry.id}}`
+  for (const presence of entry.presentOn) {
+    switch (presence.type) {
+      case "anime":
+        {
+          let data: AnimeEntryInternal | null = await db.getData(
+            "ANIME",
+            presence.id
           );
+          if (!data) {
+            return constructStatus(
+              false,
+              `Failed to resolve pointer ANIME{id=${presence.id}} at CHARACTER{id=${entry.id}}`
+            );
+          }
         }
-      }
-      break;
-    default:
-      return constructStatus(false, "Unimplemented checks");
+        break;
+      default:
+        return constructStatus(false, "Unimplemented checks");
+    }
   }
   return constructStatus(true);
 }
