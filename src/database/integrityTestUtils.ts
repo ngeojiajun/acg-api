@@ -39,7 +39,7 @@ export async function checkRemoteReferencesAnimeEntry(
   //now test the categories
   if (entry.category) {
     for (const key of entry.category) {
-      let data = db.getData("CATEGORY", key);
+      let data = await db.getData("CATEGORY", key);
       if (!data) {
         return constructStatus(
           false,
@@ -73,12 +73,6 @@ export async function checkRemoteReferencesCharacter(
           return constructStatus(
             false,
             `Failed to resolve pointer ANIME{id=${entry.presentOn.id}} at CHARACTER{id=${entry.id}}`
-          );
-        }
-        if (data.name !== entry.presentOn.name) {
-          return constructStatus(
-            false,
-            `Inconsistant value detected!! At ANIME {id=${entry.id}} name=${data.name} but inside CHARACTER it was ${entry.presentOn.name}`
           );
         }
       }

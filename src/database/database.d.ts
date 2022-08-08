@@ -25,11 +25,36 @@ export declare type CompareOperations =
   | "LESSER"
   | "EQUALS_INSENSITIVE"
   | "INCLUDES"
-  | "INCLUDES_INSENSITIVE";
+  | "INCLUDES_INSENSITIVE"
+  | "INCLUDES_SET"
+  | "EVAL_JS";
 
-export declare type Condition<T extends KeyedEntry> = {
+/**
+ * Defines the valid operand type to compare explicitly
+ */
+export declare type CompareOperationOperand = {
+  EQUALS: any;
+  GREATER: number | string;
+  LESSER: number | string;
+  EQUALS_INSENSITIVE: string;
+  INCLUDES: string;
+  INCLUDES_INSENSITIVE: string;
+  INCLUDES_SET: Array<any>;
+  EVAL_JS: (e: any) => boolean;
+};
+
+/**
+ * Defines how the conditions should be chained
+ */
+export declare type ConditionChaining = "AND" | "OR";
+
+export declare type Condition<
+  T extends KeyedEntry,
+  OP extends CompareOperations = CompareOperations
+> = {
   key: keyof T;
-  op: CompareOperations;
+  op: OP;
+  rhs?: CompareOperationOperand[OP];
 };
 /**
  * Only for putData
@@ -79,8 +104,9 @@ export declare interface IDatabase {
     dataType extends KeyedEntry = DatabaseTypesMapping[T]
   >(
     type: T,
-    another?: dataType,
-    conditions?: Condition<dataType>[]
+    another?: dataType | null,
+    conditions?: Condition<dataType>[],
+    chaining?: ConditionChaining
   ) => AsyncGenerator<number>;
   /**
    * Shutdown the database
@@ -96,5 +122,19 @@ export declare interface IDatabase {
   addData: <T extends DatabaseTypes>(
     type: T,
     data: DatabaseTypesMapping[T]
+  ) => Promise<Status>;
+  /**
+   * Update the data with id=`id` with the delta provided
+   * @param type the table to which the data is pushed into
+   * @param id the id of the entry with the patch will be applied against
+   * @param delta the data to push into, the type check will be done once again to avoid hard cast
+   * @returns result
+   * @notes same as `addNotes()` all references will be synchronized, so it is an very expensive operation on
+   * table that have multiple childs
+   */
+  updateData: <T extends DatabaseTypes>(
+    type: T,
+    id: KeyedEntry["id"],
+    delta: Partial<Omit<DatabaseTypesMapping[T], "id">>
   ) => Promise<Status>;
 }
