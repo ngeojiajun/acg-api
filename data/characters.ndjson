@@ -1,7 +1,7 @@
-1
-{"id":1,"name":"Haizakura","nameInJapanese":"灰桜（はいざくら）","gender":"female","presentOn":{"id":1,"type":"anime"}}
-{"id":2,"name":"Karasuba","nameInJapanese":"鴉羽（からすば）","gender":"female","presentOn":{"id":1,"type":"anime"}}
-{"id":3,"name":"Gekka","nameInJapanese":"月下（げっか）","gender":"female","presentOn":{"id":1,"type":"anime"}}
-{"id":4,"name":"Houkiboshi","nameInJapanese":"箒星（ほうきぼし）","gender":"female","presentOn":{"id":1,"type":"anime"}}
-{"id":5,"name":"レーツェル","nameInJapanese":"レーツェル","gender":"female","presentOn":{"id":1,"type":"anime"}}
-{"id":6,"name":"Touma Nagi","nameInJapanese":"遠間ナギ（とおまなぎ）","gender":"female","presentOn":{"id":1,"type":"anime"}}
+2
+{"id":1,"name":"Haizakura","nameInJapanese":"灰桜（はいざくら）","gender":"female","presentOn":[{"id":1,"type":"anime"}],"description":"<unknown>"}
+{"id":2,"name":"Karasuba","nameInJapanese":"鴉羽（からすば）","gender":"female","presentOn":[{"id":1,"type":"anime"}],"description":"<unknown>"}
+{"id":3,"name":"Gekka","nameInJapanese":"月下（げっか）","gender":"female","presentOn":[{"id":1,"type":"anime"}],"description":"<unknown>"}
+{"id":4,"name":"Houkiboshi","nameInJapanese":"箒星（ほうきぼし）","gender":"female","presentOn":[{"id":1,"type":"anime"}],"description":"<unknown>"}
+{"id":5,"name":"レーツェル","nameInJapanese":"レーツェル","gender":"female","presentOn":[{"id":1,"type":"anime"}],"description":"<unknown>"}
+{"id":6,"name":"Touma Nagi","nameInJapanese":"遠間ナギ（とおまなぎ）","gender":"female","presentOn":[{"id":1,"type":"anime"}],"description":"<unknown>"}
