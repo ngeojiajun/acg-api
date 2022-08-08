@@ -36,6 +36,15 @@ import {
   constructStatus,
 } from "./integrityTestUtils";
 import "../utilities/prototype_patch_def";
+import {
+  ANIME_TABLE_VERSION,
+  CATEGORY_TABLE_VERSION,
+  CHARACTER_TABLE_VERSION,
+  migrate,
+  PERSON_TABLE_VERSION,
+  queryDataValidityStatus,
+  TABLE_COMPATIBILITY_STATE,
+} from "./migrations/jsonDatabase";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -553,14 +562,19 @@ export default class JsonDatabase implements IDatabase {
       //check the tables for the mutation, if it is there sync to FS
       if (this.#database.anime && this.#database.anime.mutated) {
         console.log("Saving ANIME table.....");
-        await this.#saveTable(this.#database.anime.entries, "animes.ndjson");
+        await this.#saveTable(
+          this.#database.anime.entries,
+          "animes.ndjson",
+          ANIME_TABLE_VERSION
+        );
         this.#database.anime.mutated = false;
       }
       if (this.#database.characters && this.#database.characters.mutated) {
         console.log("Saving CHARACTER table.....");
         await this.#saveTable(
           this.#database.characters.entries,
-          "characters.ndjson"
+          "characters.ndjson",
+          CHARACTER_TABLE_VERSION
         );
         this.#database.characters.mutated = false;
       }
@@ -568,13 +582,18 @@ export default class JsonDatabase implements IDatabase {
         console.log("Saving CATEGORY table.....");
         await this.#saveTable(
           this.#database.categories.entries,
-          "categories.ndjson"
+          "categories.ndjson",
+          CATEGORY_TABLE_VERSION
         );
         this.#database.categories.mutated = false;
       }
       if (this.#database.person && this.#database.person.mutated) {
         console.log("Saving PERSON table.....");
-        await this.#saveTable(this.#database.person.entries, "persons.ndjson");
+        await this.#saveTable(
+          this.#database.person.entries,
+          "persons.ndjson",
+          PERSON_TABLE_VERSION
+        );
         this.#database.person.mutated = false;
       }
     } finally {
@@ -587,8 +606,8 @@ export default class JsonDatabase implements IDatabase {
    * @param table table data
    * @param filename filename
    */
-  async #saveTable(table: KeyedEntry[], filename: string) {
-    await writeNDJson(path.join(this.directory, filename), table);
+  async #saveTable(table: KeyedEntry[], filename: string, version: number = 1) {
+    await writeNDJson(path.join(this.directory, filename), table, version);
   }
   /**
    * Load and register the file data into the internal tables
@@ -640,6 +659,44 @@ export default class JsonDatabase implements IDatabase {
     );
     if (this.#getTable(validate_as)) {
       allowIfNotProd(`Overwriting table ${validate_as}. bug?`);
+    }
+    //check the status of the table
+    const status = queryDataValidityStatus(table, validate_as);
+    if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
+      throw new Error(
+        `JSONDatabase: Table version is incompatible with the application version. Decoding ${validate_as} v${table.payload}`
+      );
+    } else if (status === TABLE_COMPATIBILITY_STATE.NEEDS_MIGRATION) {
+      console.log(
+        `JSONDatabase: performing migration for table ${validate_as}`
+      );
+      let parsed = migrate(table, validate_as);
+      if (!parsed) {
+        throw new Error("Migration failed");
+      }
+      switch (validate_as) {
+        case "ANIME":
+          console.log(`Migrated to version ${ANIME_TABLE_VERSION}`);
+          this.#database.anime = makeCached(parsed as AnimeEntryInternal[]);
+          this.#database.anime.mutated = true; //mark this as dirty to force the database engine to write it
+          break;
+        case "CATEGORY":
+          console.log(`Migrated to version ${CATEGORY_TABLE_VERSION}`);
+          this.#database.categories = makeCached(parsed as Category[]);
+          this.#database.categories.mutated = true; //mark this as dirty to force the database engine to write it
+          break;
+        case "CHARACTER":
+          console.log(`Migrated to version ${CHARACTER_TABLE_VERSION}`);
+          this.#database.characters = makeCached(parsed as Character[]);
+          this.#database.characters.mutated = true; //mark this as dirty to force the database engine to write it
+          break;
+        case "PERSON":
+          console.log(`Migrated to version ${PERSON_TABLE_VERSION}`);
+          this.#database.person = makeCached(parsed as People[]);
+          this.#database.person.mutated = true; //mark this as dirty to force the database engine to write it
+          break;
+      }
+      return;
     }
     switch (validate_as) {
       case "ANIME":
