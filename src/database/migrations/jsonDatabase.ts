@@ -25,16 +25,16 @@ import {
   People,
 } from "../../definitions/core";
 import { NDJsonInfo } from "../../utilities/ndjson";
-import { DatabaseTypes } from "../database";
+import { DatabaseTypes, DatabaseTypesMapping } from "../database";
 
 //
 // The highest table version that it can supports
 //
 
-const ANIME_TABLE_VERSION = 1;
-const CATEGORY_TABLE_VERSION = 1;
-const CHARACTER_TABLE_VERSION = 2;
-const PERSON_TABLE_VERSION = 1;
+export const ANIME_TABLE_VERSION = 1;
+export const CATEGORY_TABLE_VERSION = 1;
+export const CHARACTER_TABLE_VERSION = 2;
+export const PERSON_TABLE_VERSION = 1;
 
 /**
  * The compatibility status of the table
@@ -63,7 +63,7 @@ export enum TABLE_COMPATIBILITY_STATE {
  * @param type the type of the table which it is checked against
  * @returns
  */
-export function queryDataValidatyStatus(
+export function queryDataValidityStatus(
   data: NDJsonInfo,
   type: DatabaseTypes
 ): TABLE_COMPATIBILITY_STATE {
@@ -87,10 +87,32 @@ export function queryDataValidatyStatus(
   }
 }
 
+/**
+ * Migrate the stuffs
+ * @param data
+ * @param type
+ */
+export function migrate<
+  T extends DatabaseTypes,
+  D extends DatabaseTypesMapping[T]
+>(data: NDJsonInfo, type: T): D[] | null {
+  switch (type) {
+    case "ANIME":
+      return migrateAnimeTable(data) as D[] | null; //definitely castable
+    case "CATEGORY":
+      return migrateCategoryTable(data) as D[] | null;
+    case "CHARACTER":
+      return migrateCharacterTable(data) as D[] | null;
+    case "PERSON":
+      return migratePersonTable(data) as D[] | null;
+  }
+  throw new Error("Unimplemented");
+}
+
 export function migrateAnimeTable(
   data: NDJsonInfo
 ): AnimeEntryInternal[] | null {
-  const status = queryDataValidatyStatus(data, "ANIME");
+  const status = queryDataValidityStatus(data, "ANIME");
   if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
     return null;
   } else if (status === TABLE_COMPATIBILITY_STATE.OK) {
@@ -101,7 +123,7 @@ export function migrateAnimeTable(
 }
 
 export function migrateCategoryTable(data: NDJsonInfo): Category[] | null {
-  const status = queryDataValidatyStatus(data, "CATEGORY");
+  const status = queryDataValidityStatus(data, "CATEGORY");
   if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
     return null;
   } else if (status === TABLE_COMPATIBILITY_STATE.OK) {
@@ -112,7 +134,7 @@ export function migrateCategoryTable(data: NDJsonInfo): Category[] | null {
 }
 
 export function migrateCharacterTable(data: NDJsonInfo): Character[] | null {
-  const status = queryDataValidatyStatus(data, "CHARACTER");
+  const status = queryDataValidityStatus(data, "CHARACTER");
   if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
     return null;
   } else if (status === TABLE_COMPATIBILITY_STATE.OK) {
@@ -153,6 +175,7 @@ export function migrateCharacterTable(data: NDJsonInfo): Character[] | null {
             // set the description to unknown and wrap the original presentOn in array
             return { ...z, description: "<unknown>", presentOn: [z.presentOn] };
           });
+          return return_value;
         }
         break;
     }
@@ -161,7 +184,7 @@ export function migrateCharacterTable(data: NDJsonInfo): Character[] | null {
 }
 
 export function migratePersonTable(data: NDJsonInfo): People[] | null {
-  const status = queryDataValidatyStatus(data, "PERSON");
+  const status = queryDataValidityStatus(data, "PERSON");
   if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
     return null;
   } else if (status === TABLE_COMPATIBILITY_STATE.OK) {
