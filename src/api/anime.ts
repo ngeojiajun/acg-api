@@ -286,15 +286,16 @@ export default class AnimeApi {
             {
               key: "presentOn",
               op: "EVAL_JS", //note that EVAL_JS has very high performance penalty so use with care
-              rhs: (entry: CharacterPresence) => {
-                if (entry.type !== "anime") {
-                  return false;
+              rhs: (entries: CharacterPresence[]) => {
+                for (const entry of entries) {
+                  if (entry.type !== "anime") {
+                    continue;
+                  }
+                  if (entry.id === id) {
+                    return true;
+                  }
                 }
-                if (entry.id === id) {
-                  return true;
-                } else {
-                  return false;
-                }
+                return false;
               },
             },
           ]
