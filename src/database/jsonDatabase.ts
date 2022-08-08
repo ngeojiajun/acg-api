@@ -19,7 +19,7 @@ import {
 } from "../definitions/core";
 import { addEntry, Cached, findEntry, makeCached } from "../utilities/cached";
 import Mutex from "../utilities/mutex";
-import { parseNDJson, writeNDJson } from "../utilities/ndjson";
+import { NDJsonInfo, parseNDJson, writeNDJson } from "../utilities/ndjson";
 import { castAndStripObject, patchObjectSecure } from "../utilities/sanitise";
 import { allowIfNotProd } from "../utils";
 import {
@@ -597,7 +597,7 @@ export default class JsonDatabase implements IDatabase {
    */
   async #loadAndRegister(filename: string, type: DatabaseTypes) {
     //load the file
-    let data: any[] = await parseNDJson(filename);
+    let data: NDJsonInfo = await parseNDJson(filename);
     //load it into the database
     this.#validateTable(data, type);
   }
@@ -634,8 +634,10 @@ export default class JsonDatabase implements IDatabase {
    * @param table the table data
    * @param validate_as the target database to register to
    */
-  #validateTable(table: any, validate_as: DatabaseTypes) {
-    console.log("JSONDatabase: registering table " + validate_as);
+  #validateTable(table: NDJsonInfo, validate_as: DatabaseTypes) {
+    console.log(
+      `JSONDatabase: registering table ${validate_as} with schema version ${table.version}`
+    );
     if (this.#getTable(validate_as)) {
       allowIfNotProd(`Overwriting table ${validate_as}. bug?`);
     }
@@ -643,7 +645,7 @@ export default class JsonDatabase implements IDatabase {
       case "ANIME":
         {
           let parsed: AnimeEntryInternal[] | null =
-            asArrayOf<AnimeEntryInternal>(table, asAnimeEntryInternal);
+            asArrayOf<AnimeEntryInternal>(table.payload, asAnimeEntryInternal);
           if (!parsed) {
             throw new Error(
               `JSONDatabase: detected schema violation when parsing table for inclusion into ANIME`
@@ -655,7 +657,10 @@ export default class JsonDatabase implements IDatabase {
         break;
       case "PERSON":
         {
-          let parsed: People[] | null = asArrayOf<People>(table, asPeople);
+          let parsed: People[] | null = asArrayOf<People>(
+            table.payload,
+            asPeople
+          );
           if (!parsed) {
             throw new Error(
               `JSONDatabase: detected schema violation when parsing table for inclusion into PERSON`
@@ -668,7 +673,7 @@ export default class JsonDatabase implements IDatabase {
       case "CHARACTER":
         {
           let parsed: Character[] | null = asArrayOf<Character>(
-            table,
+            table.payload,
             asCharacter
           );
           if (!parsed) {
@@ -683,7 +688,7 @@ export default class JsonDatabase implements IDatabase {
       case "CATEGORY":
         {
           let parsed: Category[] | null = asArrayOf<Category>(
-            table,
+            table.payload,
             asCategory
           );
           if (!parsed) {
