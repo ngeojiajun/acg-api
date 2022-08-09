@@ -144,6 +144,14 @@ export default class AdminApi {
         this.#send400(response);
         return;
       }
+      //lets make a quick test on the request
+      if (!propsPersent(request.body, asPeople, ["id"])) {
+        //the required stuffs are missing, it wll definitely failed the conversion
+        this.#send400(response);
+        return;
+      }
+      //patch the request body so it is convertable by the original converter
+      request.body.id = 0;
       let body: People | null = asPeople(request.body);
       if (!body) {
         this.#send400(response);
@@ -173,6 +181,14 @@ export default class AdminApi {
         this.#send400(response);
         return;
       }
+      //lets make a quick test on the request
+      if (!propsPersent(request.body, asCharacter, ["id"])) {
+        //the required stuffs are missing, it wll definitely failed the conversion
+        this.#send400(response);
+        return;
+      }
+      //patch the request body so it is convertable by the original converter
+      request.body.id = 0;
       let body: Character | null = asCharacter(request.body);
       if (!body) {
         this.#send400(response);
@@ -202,6 +218,14 @@ export default class AdminApi {
         this.#send400(response);
         return;
       }
+      //lets make a quick test on the request
+      if (!propsPersent(request.body, asCategory, ["id"])) {
+        //the required stuffs are missing, it wll definitely failed the conversion
+        this.#send400(response);
+        return;
+      }
+      //patch the request body so it is convertable by the original converter
+      request.body.id = 0;
       let body: Category | null = asCategory(request.body);
       if (!body) {
         this.#send400(response);
