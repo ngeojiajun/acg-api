@@ -692,7 +692,7 @@ export default class JsonDatabase implements IDatabase {
     const status = queryDataValidityStatus(table, validate_as);
     if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
       throw new Error(
-        `JSONDatabase: Table version is incompatible with the application version. Decoding ${validate_as} v${table.payload}`
+        `JSONDatabase: Table version is incompatible with the application version. Decoding ${validate_as} v${table.version}`
       );
     } else if (status === TABLE_COMPATIBILITY_STATE.NEEDS_MIGRATION) {
       console.log(
