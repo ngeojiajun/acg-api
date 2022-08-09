@@ -34,6 +34,8 @@ export default class AdminApi {
       app.post("/category", this.addCategoryEntry.bind(this));
       app.patch("/anime/:id", this.updateAnimeEntry.bind(this));
       app.patch("/character/:id", this.updateCharacterEntry.bind(this));
+      app.patch("/person/:id", this.updatePersonEntry.bind(this));
+      app.patch("/category/:id", this.updateCategoryEntry.bind(this));
       app.use(errorHandler);
     } else {
       console.warn(
