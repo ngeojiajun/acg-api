@@ -33,6 +33,7 @@ export default class AdminApi {
       app.post("/character", this.addCharacterEntry.bind(this));
       app.post("/category", this.addCategoryEntry.bind(this));
       app.patch("/anime/:id", this.updateAnimeEntry.bind(this));
+      app.patch("/character/:id", this.updateCharacterEntry.bind(this));
       app.use(errorHandler);
     } else {
       console.warn(
@@ -89,6 +90,10 @@ export default class AdminApi {
       next(e);
     }
   }
+  /**
+   * update anime body in body
+   * @route /anime/:id PATCH
+   */
   async updateAnimeEntry(
     request: Request,
     response: Response,
@@ -168,6 +173,51 @@ export default class AdminApi {
     }
   }
   /**
+   * update character body in body
+   * @route /person/:id PATCH
+   */
+  async updatePersonEntry(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //first try to validate the request body
+      if (!request.body) {
+        this.#send400(response);
+        return;
+      }
+      const id = tryParseInteger(request.params.id);
+      //check the id itself
+      if (!id) {
+        response.status(404).json({ error: "Entry not found" }).end();
+        return;
+      }
+      //check the patch and ensure it is valid
+      if (!doesPatchEffects(request.body, asPeople, ["id"])) {
+        //the body is valid but the it brings no effect when applied to the internal object
+        this.#send400(response);
+        return;
+      }
+      let status: Status = await this.#database.updateData(
+        "PERSON",
+        id,
+        request.body
+      );
+      if (!status.success) {
+        if (status.code === ERROR_ENTRY_NOT_FOUND) {
+          response.status(404).json({ error: "Entry not found" }).end();
+          return;
+        } else {
+          this.#send400(response);
+          return;
+        }
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  /**
    * Add character in body
    * @route /character POST
    */
@@ -205,6 +255,51 @@ export default class AdminApi {
     }
   }
   /**
+   * update character body in body
+   * @route /character/:id PATCH
+   */
+  async updateCharacterEntry(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //first try to validate the request body
+      if (!request.body) {
+        this.#send400(response);
+        return;
+      }
+      const id = tryParseInteger(request.params.id);
+      //check the id itself
+      if (!id) {
+        response.status(404).json({ error: "Entry not found" }).end();
+        return;
+      }
+      //check the patch and ensure it is valid
+      if (!doesPatchEffects(request.body, asCharacter, ["id"])) {
+        //the body is valid but the it brings no effect when applied to the internal object
+        this.#send400(response);
+        return;
+      }
+      let status: Status = await this.#database.updateData(
+        "CHARACTER",
+        id,
+        request.body
+      );
+      if (!status.success) {
+        if (status.code === ERROR_ENTRY_NOT_FOUND) {
+          response.status(404).json({ error: "Entry not found" }).end();
+          return;
+        } else {
+          this.#send400(response);
+          return;
+        }
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  /**
    * Add category in body
    * @route /category POST
    */
@@ -236,6 +331,51 @@ export default class AdminApi {
         response.status(409).json({ error: result.message });
       } else {
         response.status(201).json({ id: result.message });
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  /**
+   * update category body in body
+   * @route /category/:id PATCH
+   */
+  async updateCategoryEntry(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //first try to validate the request body
+      if (!request.body) {
+        this.#send400(response);
+        return;
+      }
+      const id = tryParseInteger(request.params.id);
+      //check the id itself
+      if (!id) {
+        response.status(404).json({ error: "Entry not found" }).end();
+        return;
+      }
+      //check the patch and ensure it is valid
+      if (!doesPatchEffects(request.body, asCategory, ["id"])) {
+        //the body is valid but the it brings no effect when applied to the internal object
+        this.#send400(response);
+        return;
+      }
+      let status: Status = await this.#database.updateData(
+        "CATEGORY",
+        id,
+        request.body
+      );
+      if (!status.success) {
+        if (status.code === ERROR_ENTRY_NOT_FOUND) {
+          response.status(404).json({ error: "Entry not found" }).end();
+          return;
+        } else {
+          this.#send400(response);
+          return;
+        }
       }
     } catch (e) {
       next(e);
