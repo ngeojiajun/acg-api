@@ -1,13 +1,15 @@
 import express, { Application, NextFunction, Request, Response } from "express";
 import { AuthProvider } from "../authentication/auth_provider";
 import ProtectedRoute from "../authentication/middlewares";
-import { IDatabase } from "../database/database";
+import { ERROR_ENTRY_NOT_FOUND, IDatabase } from "../database/database";
 import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
 import { asCategory, asCharacter, asPeople } from "../definitions/converters";
 import { People, Status, Character, Category } from "../definitions/core";
+import { doesPatchEffects, propsPersent } from "../utilities/sanitise";
+import { tryParseInteger } from "../utils";
 import { errorHandler, nonExistantRoute } from "./commonUtils";
 
 /**
@@ -29,6 +31,7 @@ export default class AdminApi {
       app.post("/person", this.addPeopleEntry.bind(this));
       app.post("/character", this.addCharacterEntry.bind(this));
       app.post("/category", this.addCategoryEntry.bind(this));
+      app.patch("/anime/:id", this.updateAnimeEntry.bind(this));
       app.use(errorHandler);
     } else {
       console.warn(
@@ -55,6 +58,21 @@ export default class AdminApi {
         this.#send400(response);
         return;
       }
+      //lets make a quick test on the request
+      if (
+        !propsPersent(request.body, asAnimeEntryInternal, [
+          "id",
+          "category",
+          "author",
+          "publisher",
+        ])
+      ) {
+        //the required stuffs are missing, it wll definitely failed the conversion
+        this.#send400(response);
+        return;
+      }
+      //patch the request body so it is convertable by the original converter
+      request.body.id = 0;
       let body: AnimeEntryInternal | null = asAnimeEntryInternal(request.body);
       if (!body) {
         this.#send400(response);
@@ -65,6 +83,47 @@ export default class AdminApi {
         response.status(409).json({ error: result.message });
       } else {
         response.status(201).json({ id: result.message });
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  async updateAnimeEntry(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //first try to validate the request body
+      if (!request.body) {
+        this.#send400(response);
+        return;
+      }
+      const id = tryParseInteger(request.params.id);
+      //check the id itself
+      if (!id) {
+        response.status(404).json({ error: "Entry not found" }).end();
+        return;
+      }
+      //check the patch and ensure it is valid
+      if (!doesPatchEffects(request.body, asAnimeEntryInternal, ["id"])) {
+        //the body is valid but the it brings no effect when applied to the internal object
+        this.#send400(response);
+        return;
+      }
+      let status: Status = await this.#database.updateData(
+        "ANIME",
+        id,
+        request.body
+      );
+      if (!status.success) {
+        if (status.code === ERROR_ENTRY_NOT_FOUND) {
+          response.status(404).json({ error: "Entry not found" }).end();
+          return;
+        } else {
+          this.#send400(response);
+          return;
+        }
       }
     } catch (e) {
       next(e);
