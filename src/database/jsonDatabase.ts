@@ -12,7 +12,6 @@ import {
 import {
   Category,
   Character,
-  CharacterPresence,
   KeyedEntry,
   People,
   Status,
