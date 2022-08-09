@@ -4,7 +4,7 @@
 
 import { AnimeEntryInternal } from "../definitions/anime.internal";
 import { Character, People, Status } from "../definitions/core";
-import { IDatabase } from "./database";
+import { ERROR_INTEGRITY_TEST_FAILED, IDatabase } from "./database";
 
 export function constructStatus(
   success: boolean,
@@ -36,7 +36,8 @@ export async function checkRemoteReferencesAnimeEntry(
     if (!data) {
       return constructStatus(
         false,
-        `Failed to resolve pointer PERSON{id=${k}} at ANIME{id=${entry.id}}`
+        `Failed to resolve pointer PERSON{id=${k}} at ANIME{id=${entry.id}}`,
+        ERROR_INTEGRITY_TEST_FAILED
       );
     }
   }
@@ -47,7 +48,8 @@ export async function checkRemoteReferencesAnimeEntry(
       if (!data) {
         return constructStatus(
           false,
-          `Failed to resolve pointer CATEGORY{id=${key}} at ANIME{id=${entry.id}}`
+          `Failed to resolve pointer CATEGORY{id=${key}} at ANIME{id=${entry.id}}`,
+          ERROR_INTEGRITY_TEST_FAILED
         );
       }
     }
@@ -77,7 +79,8 @@ export async function checkRemoteReferencesCharacter(
           if (!data) {
             return constructStatus(
               false,
-              `Failed to resolve pointer ANIME{id=${presence.id}} at CHARACTER{id=${entry.id}}`
+              `Failed to resolve pointer ANIME{id=${presence.id}} at CHARACTER{id=${entry.id}}`,
+              ERROR_INTEGRITY_TEST_FAILED
             );
           }
         }
