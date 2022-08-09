@@ -91,3 +91,64 @@ export function patchObjectSecure<T>(
   }
   return converter(copied);
 }
+
+/**
+ * Check weather the props checked by the converter are present inside the `object` there are no gurantee that the
+ * object that passed the check will also pass the check by the converter itself
+ * @param object object to test against
+ * @param converter the converter function which contain the list of the checked props
+ * @param ignore the list of the property to be ignored during the test
+ * @returns true if the converter have potential to convert it or false otherwise
+ */
+export function propsPersent(
+  object: any,
+  converter: Function,
+  ignore: string[] = ["id"]
+): boolean {
+  if (typeof object !== "object") {
+    return false;
+  }
+  if (!Array.isArray((converter as any).checkedList)) {
+    return false; //we dont know which props are verified
+  }
+  let list: string[] = (converter as any).checkedList;
+  for (const key of list) {
+    if (ignore.includes(key)) {
+      continue;
+    }
+    if (typeof object[key] === "undefined") {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Check weather the patch provider does any effect when applied to any object which is converted by the converter
+ * @param patch the patch to be applied
+ * @param converter the converter function which contain the list of the checked props
+ * @param ignore the list the should not considered having effect to the object
+ * @returns true if the patch brings effect toward the object or false otherwise
+ */
+export function doesPatchEffects(
+  patch: any,
+  converter: Function,
+  ignore: string[]
+): boolean {
+  if (typeof patch !== "object") {
+    return false;
+  }
+  if (!Array.isArray((converter as any).checkedList)) {
+    return false; //we dont know which props are verified
+  }
+  let list: string[] = (converter as any).checkedList;
+  for (const key of list) {
+    if (ignore.includes(key)) {
+      continue;
+    }
+    if (typeof patch[key] !== "undefined") {
+      return true;
+    }
+  }
+  return false;
+}

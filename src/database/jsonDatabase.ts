@@ -12,7 +12,6 @@ import {
 import {
   Category,
   Character,
-  CharacterPresence,
   KeyedEntry,
   People,
   Status,
@@ -45,6 +44,13 @@ import {
   queryDataValidityStatus,
   TABLE_COMPATIBILITY_STATE,
 } from "./migrations/jsonDatabase";
+import {
+  ERROR_DUPLICATE_ENTRY,
+  ERROR_ENTRY_NOT_FOUND,
+  ERROR_INTEGRITY_TEST_FAILED,
+  ERROR_INVALID_DATA,
+  ERROR_PATCH_FAILED,
+} from "./error_codes";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -143,14 +149,18 @@ export default class JsonDatabase implements IDatabase {
           //get an effective copy of it
           let data = await this.#getData(type, id, asAnimeEntryInternal, false);
           if (!data) {
-            return constructStatus(false, "Entry not found");
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
           }
           //try to perform patch on it
           let patched = patchObjectSecure(data, delta, asAnimeEntryInternal, [
             "id",
           ]);
           if (!patched) {
-            return constructStatus(false, "Invalid patch");
+            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
           }
           //now perform few checks
           //ensure the new data is valid for the table integrity
@@ -161,7 +171,8 @@ export default class JsonDatabase implements IDatabase {
           if (!status.success) {
             return constructStatus(
               false,
-              "Cannot patch the data as " + status.message
+              "Cannot patch the data as " + status.message,
+              ERROR_INTEGRITY_TEST_FAILED
             );
           }
           //commit the changes
@@ -173,14 +184,18 @@ export default class JsonDatabase implements IDatabase {
           //get an effective copy of it
           let data = await this.#getData(type, id, asAnimeEntryInternal, false);
           if (!data) {
-            return constructStatus(false, "Entry not found");
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
           }
           //try to perform patch on it
           let patched = patchObjectSecure(data, delta, asAnimeEntryInternal, [
             "id",
           ]);
           if (!patched) {
-            return constructStatus(false, "Invalid patch");
+            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
           }
           //no remote check needed for this
           //just patch it directly
@@ -192,12 +207,16 @@ export default class JsonDatabase implements IDatabase {
           //get an effective copy of it
           let data = await this.#getData(type, id, asPeople, false);
           if (!data) {
-            return constructStatus(false, "Entry not found");
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
           }
           //try to perform patch on it
           let patched = patchObjectSecure(data, delta, asPeople, ["id"]);
           if (!patched) {
-            return constructStatus(false, "Invalid patch");
+            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
           }
           //no remote check needed for this
           //just patch it directly
@@ -209,12 +228,16 @@ export default class JsonDatabase implements IDatabase {
           //get an effective copy of it
           let data = await this.#getData(type, id, asCharacter, false);
           if (!data) {
-            return constructStatus(false, "Entry not found");
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
           }
           //try to perform patch on it
           let patched = patchObjectSecure(data, delta, asCharacter, ["id"]);
           if (!patched) {
-            return constructStatus(false, "Invalid patch");
+            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
           }
           //check for remote references
           //ensure the new data is valid for the table integrity
@@ -225,7 +248,8 @@ export default class JsonDatabase implements IDatabase {
           if (!status.success) {
             return constructStatus(
               false,
-              "Cannot patch the data as " + status.message
+              "Cannot patch the data as " + status.message,
+              ERROR_INTEGRITY_TEST_FAILED
             );
           }
           //just patch it directly
@@ -267,7 +291,7 @@ export default class JsonDatabase implements IDatabase {
     try {
       let cast: dataType | null = castAndStripObject(data, converter);
       if (!cast) {
-        return constructStatus(false, "Invalid data");
+        return constructStatus(false, "Invalid data", ERROR_INVALID_DATA);
       }
       //ensure the data is not clashing with current one
       let iterator = this.iterateKeysIf(type, cast, equality);
@@ -276,7 +300,11 @@ export default class JsonDatabase implements IDatabase {
         //the mutex is not actually locked by iterator as the writing lock is owned
         iterator.next(true);
         //there are conflicts
-        return constructStatus(false, "The data might be already in database");
+        return constructStatus(
+          false,
+          "The data might be already in database",
+          ERROR_DUPLICATE_ENTRY
+        );
       }
       //check for the status
       let status = await verifier(this, cast);
