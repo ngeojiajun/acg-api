@@ -6,8 +6,12 @@ import { AnimeEntryInternal } from "../definitions/anime.internal";
 import { Character, People, Status } from "../definitions/core";
 import { IDatabase } from "./database";
 
-export function constructStatus(success: boolean, message?: any): Status {
-  return { success, message };
+export function constructStatus(
+  success: boolean,
+  message?: any,
+  code: number = 0
+): Status {
+  return { success, message, code };
 }
 
 /**

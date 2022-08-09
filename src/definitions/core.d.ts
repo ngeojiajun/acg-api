@@ -5,6 +5,8 @@
 export declare type Status = {
   success: boolean;
   message: any | undefined;
+  //failure code
+  code: number;
 };
 
 /**
