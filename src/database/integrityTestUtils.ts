@@ -4,7 +4,8 @@
 
 import { AnimeEntryInternal } from "../definitions/anime.internal";
 import { Character, People, Status } from "../definitions/core";
-import { ERROR_INTEGRITY_TEST_FAILED, IDatabase } from "./database";
+import { IDatabase } from "./database";
+import { ERROR_INTEGRITY_TEST_FAILED } from "./error_codes";
 
 export function constructStatus(
   success: boolean,

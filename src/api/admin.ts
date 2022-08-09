@@ -1,7 +1,8 @@
 import express, { Application, NextFunction, Request, Response } from "express";
 import { AuthProvider } from "../authentication/auth_provider";
 import ProtectedRoute from "../authentication/middlewares";
-import { ERROR_ENTRY_NOT_FOUND, IDatabase } from "../database/database";
+import { IDatabase } from "../database/database";
+import { ERROR_ENTRY_NOT_FOUND } from "../database/error_codes";
 import {
   AnimeEntryInternal,
   asAnimeEntryInternal,

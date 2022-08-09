@@ -26,11 +26,6 @@ import {
   ConditionChaining,
   DatabaseTypes,
   DatabaseTypesMapping,
-  ERROR_DUPLICATE_ENTRY,
-  ERROR_ENTRY_NOT_FOUND,
-  ERROR_INTEGRITY_TEST_FAILED,
-  ERROR_INVALID_DATA,
-  ERROR_PATCH_FAILED,
   IDatabase,
   ReturnType,
 } from "./database";
@@ -49,6 +44,13 @@ import {
   queryDataValidityStatus,
   TABLE_COMPATIBILITY_STATE,
 } from "./migrations/jsonDatabase";
+import {
+  ERROR_DUPLICATE_ENTRY,
+  ERROR_ENTRY_NOT_FOUND,
+  ERROR_INTEGRITY_TEST_FAILED,
+  ERROR_INVALID_DATA,
+  ERROR_PATCH_FAILED,
+} from "./error_codes";
 
 /**
  * Internal variable holding the locally parsed stuff
