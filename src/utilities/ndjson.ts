@@ -36,7 +36,7 @@ export function parseNDJson(path: string): Promise<NDJsonInfo> {
         if (!parsed_json) {
           parsed_json = true;
           //check the presence of version number inside the response
-          if (/^[\d+]$/.test(buff_to_parse)) {
+          if (/^[\d]+$/.test(buff_to_parse)) {
             let parsed_version = parseInt(buff_to_parse);
             version = parsed_version;
             continue;
