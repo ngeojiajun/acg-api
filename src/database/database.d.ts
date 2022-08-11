@@ -137,4 +137,11 @@ export declare interface IDatabase {
     id: KeyedEntry["id"],
     delta: Partial<Omit<DatabaseTypesMapping[T], "id">>
   ) => Promise<Status>;
+  /**
+   * Remove the entry from the table
+   * @param type the table to data should be removed from
+   * @param id the id of the entry
+   * @returns the result
+   */
+  removeData: (type: DatabaseTypes, id: KeyedEntry["id"]) => Promise<Status>;
 }
