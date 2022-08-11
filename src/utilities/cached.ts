@@ -86,3 +86,31 @@ export function addEntry<T extends KeyedEntry>(
   table.cache[id] = tableIdx;
   return id;
 }
+
+/**
+ * Remove an entry from the table
+ * @param table
+ * @param id
+ * @returns
+ */
+export function removeEntryById<T extends KeyedEntry>(
+  table: Cached<T>,
+  id: KeyedEntry["id"]
+): boolean {
+  let { cache, entries } = table;
+  let index = cache[id];
+  if (index !== undefined) {
+    //use the index to remove the stuffs
+    delete cache[id];
+    entries.splice(index, 1);
+    table.mutated = true;
+    return true;
+  }
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].id === id) {
+      entries.splice(i, i);
+      return true;
+    }
+  }
+  return false;
+}
