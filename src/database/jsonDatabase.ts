@@ -582,6 +582,10 @@ export default class JsonDatabase implements IDatabase {
       mutex_release();
     }
   }
+  async removeData(type: DatabaseTypes, id: number): Promise<Status> {
+    return constructStatus(false, "Unimplemented");
+  }
+
   async close(): Promise<void> {
     if (!this.shouldSaveWhenClose) return;
     let mutex_release = await this.#mutex.tryLock();
