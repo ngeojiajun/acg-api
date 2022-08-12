@@ -7,3 +7,4 @@ export const ERROR_INTEGRITY_TEST_FAILED = 2;
 export const ERROR_DUPLICATE_ENTRY = 3;
 export const ERROR_PATCH_FAILED = 4;
 export const ERROR_INVALID_DATA = 5;
+export const ERROR_HAVING_REMOTE_DEPENCENCIES = 6;

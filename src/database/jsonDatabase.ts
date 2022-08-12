@@ -12,11 +12,18 @@ import {
 import {
   Category,
   Character,
+  CharacterPresence,
   KeyedEntry,
   People,
   Status,
 } from "../definitions/core";
-import { addEntry, Cached, findEntry, makeCached } from "../utilities/cached";
+import {
+  addEntry,
+  Cached,
+  findEntry,
+  makeCached,
+  removeEntryById,
+} from "../utilities/cached";
 import Mutex from "../utilities/mutex";
 import { NDJsonInfo, parseNDJson, writeNDJson } from "../utilities/ndjson";
 import { castAndStripObject, patchObjectSecure } from "../utilities/sanitise";
@@ -583,7 +590,129 @@ export default class JsonDatabase implements IDatabase {
     }
   }
   async removeData(type: DatabaseTypes, id: number): Promise<Status> {
-    return constructStatus(false, "Unimplemented");
+    const table = this.#getTable(type);
+    if (!table) {
+      throw new Error("Fatal error: table not registered yet. bug?");
+    }
+    const mutex_release = await this.#mutex.tryLock();
+    try {
+      switch (type) {
+        case "ANIME": {
+          let iterator = this.iterateKeysIf<"CHARACTER">("CHARACTER", null, [
+            {
+              key: "presentOn",
+              op: "EVAL_JS", //note that EVAL_JS has very high performance penalty so use with care
+              rhs: (entries: CharacterPresence[]) => {
+                for (const entry of entries) {
+                  if (entry.type !== "anime") {
+                    continue;
+                  }
+                  if (entry.id === id) {
+                    return true;
+                  }
+                }
+                return false;
+              },
+            },
+          ]);
+          if (!(await iterator.next()).done) {
+            iterator.next(true);
+            return constructStatus(
+              false,
+              "Cannot delete the entry because it is referenced by entry in CHARACTER",
+              ERROR_INTEGRITY_TEST_FAILED
+            );
+          }
+          if (!removeEntryById(table, id)) {
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
+          } else {
+            return constructStatus(true);
+          }
+        }
+        case "CATEGORY": {
+          let iterator = this.iterateKeysIf<"ANIME">("ANIME", null, [
+            {
+              key: "category",
+              op: "INCLUDES_SET",
+              rhs: id,
+            },
+          ]);
+          if (!(await iterator.next()).done) {
+            iterator.next(true);
+            return constructStatus(
+              false,
+              "Cannot delete the entry because it is referenced by entry in ANIME",
+              ERROR_INTEGRITY_TEST_FAILED
+            );
+          }
+          if (!removeEntryById(table, id)) {
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
+          } else {
+            return constructStatus(true);
+          }
+        }
+        case "PERSON": {
+          let iterator = this.iterateKeysIf<"ANIME">(
+            "ANIME",
+            null,
+            [
+              {
+                key: "publisher",
+                op: "INCLUDES_SET",
+                rhs: id,
+              },
+              {
+                key: "author",
+                op: "INCLUDES_SET",
+                rhs: id,
+              },
+            ],
+            "OR"
+          );
+          if (!(await iterator.next()).done) {
+            iterator.next(true);
+            return constructStatus(
+              false,
+              "Cannot delete the entry because it is referenced by entry in ANIME",
+              ERROR_INTEGRITY_TEST_FAILED
+            );
+          }
+          if (!removeEntryById(table, id)) {
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
+          } else {
+            return constructStatus(true);
+          }
+        }
+        case "CHARACTER": {
+          //no checks need as there are no tables from another table will make references to it
+          if (!removeEntryById(table, id)) {
+            return constructStatus(
+              false,
+              "Entry not found",
+              ERROR_ENTRY_NOT_FOUND
+            );
+          } else {
+            return constructStatus(true);
+          }
+        }
+        default:
+          return constructStatus(false, "Unimplemented");
+      }
+    } finally {
+      mutex_release();
+    }
   }
 
   async close(): Promise<void> {
