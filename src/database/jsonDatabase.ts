@@ -54,6 +54,7 @@ import {
 import {
   ERROR_DUPLICATE_ENTRY,
   ERROR_ENTRY_NOT_FOUND,
+  ERROR_HAVING_REMOTE_DEPENCENCIES,
   ERROR_INTEGRITY_TEST_FAILED,
   ERROR_INVALID_DATA,
   ERROR_PATCH_FAILED,
@@ -646,7 +647,7 @@ export default class JsonDatabase implements IDatabase {
             return constructStatus(
               false,
               "Cannot delete the entry because it is referenced by entry in ANIME",
-              ERROR_INTEGRITY_TEST_FAILED
+              ERROR_HAVING_REMOTE_DEPENCENCIES
             );
           }
           if (!removeEntryById(table, id)) {
@@ -682,7 +683,7 @@ export default class JsonDatabase implements IDatabase {
             return constructStatus(
               false,
               "Cannot delete the entry because it is referenced by entry in ANIME",
-              ERROR_INTEGRITY_TEST_FAILED
+              ERROR_HAVING_REMOTE_DEPENCENCIES
             );
           }
           if (!removeEntryById(table, id)) {
