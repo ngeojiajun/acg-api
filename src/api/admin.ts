@@ -1,8 +1,12 @@
 import express, { Application, NextFunction, Request, Response } from "express";
 import { AuthProvider } from "../authentication/auth_provider";
 import ProtectedRoute from "../authentication/middlewares";
-import { IDatabase } from "../database/database";
-import { ERROR_ENTRY_NOT_FOUND } from "../database/error_codes";
+import { DatabaseTypes, IDatabase } from "../database/database";
+import {
+  ERROR_ENTRY_NOT_FOUND,
+  ERROR_HAVING_REMOTE_DEPENCENCIES,
+  ERROR_INTEGRITY_TEST_FAILED,
+} from "../database/error_codes";
 import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
@@ -36,6 +40,10 @@ export default class AdminApi {
       app.patch("/character/:id", this.updateCharacterEntry.bind(this));
       app.patch("/person/:id", this.updatePersonEntry.bind(this));
       app.patch("/category/:id", this.updateCategoryEntry.bind(this));
+      app.delete("/anime/:id", this.#deleteEntry.bind(this, "ANIME"));
+      app.delete("/character/:id", this.#deleteEntry.bind(this, "CHARACTER"));
+      app.delete("/person/:id", this.#deleteEntry.bind(this, "PERSON"));
+      app.delete("/category/:id", this.#deleteEntry.bind(this, "CATEGORY"));
       app.use(errorHandler);
     } else {
       console.warn(
@@ -128,10 +136,15 @@ export default class AdminApi {
         if (status.code === ERROR_ENTRY_NOT_FOUND) {
           response.status(404).json({ error: "Entry not found" }).end();
           return;
+        } else if (status.code === ERROR_INTEGRITY_TEST_FAILED) {
+          response.status(409).json({ error: status.message }).end();
+          return;
         } else {
           this.#send400(response);
           return;
         }
+      } else {
+        response.status(201).json({ id }).end();
       }
     } catch (e) {
       next(e);
@@ -210,10 +223,15 @@ export default class AdminApi {
         if (status.code === ERROR_ENTRY_NOT_FOUND) {
           response.status(404).json({ error: "Entry not found" }).end();
           return;
+        } else if (status.code === ERROR_INTEGRITY_TEST_FAILED) {
+          response.status(409).json({ error: status.message }).end();
+          return;
         } else {
           this.#send400(response);
           return;
         }
+      } else {
+        response.status(201).json({ id }).end();
       }
     } catch (e) {
       next(e);
@@ -292,10 +310,15 @@ export default class AdminApi {
         if (status.code === ERROR_ENTRY_NOT_FOUND) {
           response.status(404).json({ error: "Entry not found" }).end();
           return;
+        } else if (status.code === ERROR_INTEGRITY_TEST_FAILED) {
+          response.status(409).json({ error: status.message }).end();
+          return;
         } else {
           this.#send400(response);
           return;
         }
+      } else {
+        response.status(201).json({ id }).end();
       }
     } catch (e) {
       next(e);
@@ -374,9 +397,58 @@ export default class AdminApi {
         if (status.code === ERROR_ENTRY_NOT_FOUND) {
           response.status(404).json({ error: "Entry not found" }).end();
           return;
+        } else if (status.code === ERROR_INTEGRITY_TEST_FAILED) {
+          response.status(409).json({ error: status.message }).end();
+          return;
         } else {
           this.#send400(response);
           return;
+        }
+      } else {
+        response.status(201).json({ id }).end();
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  /**
+   * delete something from the table
+   * @route /<table>>/:id DELETE
+   */
+  async #deleteEntry(
+    type: DatabaseTypes,
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //first try to validate the request body
+      if (!request.body) {
+        this.#send400(response);
+        return;
+      }
+      const id = tryParseInteger(request.params.id);
+      //check the id itself
+      if (!id) {
+        response.status(404).json({ error: "Entry not found" }).end();
+        return;
+      }
+      let status: Status = await this.#database.removeData(type, id);
+      if (!status.success) {
+        if (status.code === ERROR_ENTRY_NOT_FOUND) {
+          response.status(404).json({ error: "Entry not found" }).end();
+          return;
+        } else if (status.code === ERROR_HAVING_REMOTE_DEPENCENCIES) {
+          response
+            .status(409)
+            .json({
+              error:
+                "Cannot remove the entry as it is refered by other entries",
+            })
+            .end();
+          return;
+        } else {
+          response.status(500).json({ error: "Internal error happened" }).end();
         }
       }
     } catch (e) {
