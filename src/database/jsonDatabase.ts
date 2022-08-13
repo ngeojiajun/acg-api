@@ -301,21 +301,14 @@ export default class JsonDatabase implements IDatabase {
       if (!cast) {
         return constructStatus(false, "Invalid data", ERROR_INVALID_DATA);
       }
-      //ensure the data is not clashing with current one
-      let iterator = this.iterateKeysIf(type, cast, equality);
-      if (!(await iterator.next()).done) {
-        //ask iterator to release the mutex immediately (NOP but good practise)
-        //the mutex is not actually locked by iterator as the writing lock is owned
-        iterator.next(true);
-        //there are conflicts
-        return constructStatus(
-          false,
-          "The data might be already in database",
-          ERROR_DUPLICATE_ENTRY
-        );
-      }
       //check for the status
-      let status = await verifier(this, cast);
+      let status = await this.#verifyDataForInclusion(
+        type,
+        cast,
+        null,
+        equality,
+        verifier
+      );
       if (!status.success) {
         return status;
       }
@@ -762,6 +755,50 @@ export default class JsonDatabase implements IDatabase {
       console.log("Saved");
       mutex_release();
     }
+  }
+
+  /**
+   * Verify the data using the verifiers provided so that the database's integrity will not be
+   * compromised after the inclusion of this
+   * @param type the database table type the data is checked against
+   * @param data the data to check
+   * @param id the data's original id (to ignore when checking for collision)
+   * @param equality the list of checks for it to be qualify as equals
+   * @param verifier function to check the remote references
+   */
+  async #verifyDataForInclusion<
+    T extends DatabaseTypes,
+    dataType extends KeyedEntry = DatabaseTypesMapping[T]
+  >(
+    type: T,
+    data: dataType,
+    id: KeyedEntry["id"] | null,
+    equality: Condition<dataType>[],
+    verifier: (db: IDatabase, e: dataType) => Promise<Status> = async (_, __) =>
+      constructStatus(true)
+  ): Promise<Status> {
+    //ensure the data is not clashing with current one
+    let iterator = this.iterateKeysIf(type, data, equality);
+    let result = await iterator.next();
+    if (!result.done) {
+      //ask iterator to release the mutex immediately (NOP but good practise)
+      //the mutex is not actually locked by iterator as the writing lock is owned
+      iterator.next(true);
+      //there are conflicts
+      if (result.value != id) {
+        return constructStatus(
+          false,
+          "The data might be already in database",
+          ERROR_DUPLICATE_ENTRY
+        );
+      }
+    }
+    //check for the status
+    let status = await verifier(this, data);
+    if (!status.success) {
+      return status;
+    }
+    return constructStatus(true);
   }
   /**
    * Save the table as JSON into file
