@@ -450,6 +450,8 @@ export default class AdminApi {
         } else {
           response.status(500).json({ error: "Internal error happened" }).end();
         }
+      } else {
+        response.status(204).end();
       }
     } catch (e) {
       next(e);
