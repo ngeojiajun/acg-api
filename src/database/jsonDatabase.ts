@@ -639,7 +639,7 @@ export default class JsonDatabase implements IDatabase {
             {
               key: "category",
               op: "INCLUDES_SET",
-              rhs: id,
+              rhs: [id],
             },
           ]);
           if (!(await iterator.next()).done) {
@@ -668,12 +668,12 @@ export default class JsonDatabase implements IDatabase {
               {
                 key: "publisher",
                 op: "INCLUDES_SET",
-                rhs: id,
+                rhs: [id],
               },
               {
                 key: "author",
                 op: "INCLUDES_SET",
-                rhs: id,
+                rhs: [id],
               },
             ],
             "OR"
