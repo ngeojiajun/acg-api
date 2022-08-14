@@ -79,10 +79,11 @@ export function addEntry<T extends KeyedEntry>(
   while (findEntry(table, id)) {
     id++; //if clash try next
   }
+  let copy = { ...data };
   //overwrite ids
-  data.id = id;
+  copy.id = id;
   //finally push this
-  let tableIdx = table.entries.push(data) - 1;
+  let tableIdx = table.entries.push(copy) - 1;
   table.cache[id] = tableIdx;
   return id;
 }
