@@ -110,6 +110,7 @@ export function removeEntryById<T extends KeyedEntry>(
   for (let i = 0; i < entries.length; i++) {
     if (entries[i].id === id) {
       entries.splice(i, i);
+      table.mutated = true;
       return true;
     }
   }
