@@ -1,9 +1,10 @@
+import { CachedTests } from "./cached";
 import { IntegrityTest } from "./integrity_test";
 
 /**
  * The test engine for the project
  */
-const tests: (() => Promise<void>)[] = [IntegrityTest];
+const tests: (() => Promise<void>)[] = [IntegrityTest, CachedTests];
 
 async function main() {
   console.log(`Test started on ${new Date()}`);
