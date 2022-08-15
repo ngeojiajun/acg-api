@@ -46,6 +46,7 @@ import {
   ANIME_TABLE_VERSION,
   CATEGORY_TABLE_VERSION,
   CHARACTER_TABLE_VERSION,
+  getMaximumSupportedVersion,
   migrate,
   PERSON_TABLE_VERSION,
   queryDataValidityStatus,
@@ -59,6 +60,7 @@ import {
   ERROR_INVALID_DATA,
   ERROR_PATCH_FAILED,
 } from "./error_codes";
+import { existsSync } from "fs";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -797,6 +799,19 @@ export default class JsonDatabase implements IDatabase {
    * @param type the type of the database it should be injected into
    */
   async #loadAndRegister(filename: string, type: DatabaseTypes) {
+    if (!existsSync(filename)) {
+      console.warn(
+        `${filename} not exists for initialization for ${type}! Initializing it as empty table instead!`
+      );
+      this.#validateTable(
+        {
+          payload: [],
+          version: getMaximumSupportedVersion(type),
+        },
+        type
+      );
+      return;
+    }
     //load the file
     let data: NDJsonInfo = await parseNDJson(filename);
     //load it into the database
@@ -846,7 +861,9 @@ export default class JsonDatabase implements IDatabase {
     const status = queryDataValidityStatus(table, validate_as);
     if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
       throw new Error(
-        `JSONDatabase: Table version is incompatible with the application version. Decoding ${validate_as} v${table.version}`
+        `JSONDatabase: Table version is incompatible with the application version (v${getMaximumSupportedVersion(
+          validate_as
+        )}). Decoding ${validate_as} v${table.version}`
       );
     } else if (status === TABLE_COMPATIBILITY_STATE.NEEDS_MIGRATION) {
       console.log(
