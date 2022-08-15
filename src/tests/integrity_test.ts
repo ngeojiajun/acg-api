@@ -1,27 +1,14 @@
-/**
- * Intergity test toward the database
- */
-
-import { IDatabase } from "./database/database";
+import { IDatabase } from "../database/database";
 import {
   checkRemoteReferencesAnimeEntry,
   checkRemoteReferencesCharacter,
-} from "./database/integrityTestUtils";
-import JsonDatabase from "./database/jsonDatabase";
-import { AnimeEntryInternal } from "./definitions/anime.internal";
-import { Character, Status } from "./definitions/core";
+} from "../database/integrityTestUtils";
+import JsonDatabase from "../database/jsonDatabase";
+import { AnimeEntryInternal } from "../definitions/anime.internal";
+import { Character } from "../definitions/core";
+import { assertSuccess, fail } from "./common_utils";
 
-function fail(message: string = "Assertion failed"): never {
-  throw new Error(message);
-}
-
-function assertSuccess(result: Status) {
-  if (!result.success) {
-    fail(result.message);
-  }
-}
-
-async function main() {
+export async function IntegrityTest() {
   let db: IDatabase = new JsonDatabase("./data/");
   console.log("Database is initializing");
   await db.init();
@@ -49,13 +36,7 @@ async function main() {
       assertSuccess(await checkRemoteReferencesCharacter(db, a));
     }
     console.log("Characters table checked");
-  } catch (E) {
-    console.error(`Test failed!`);
-    console.error(E);
   } finally {
     await db.close();
   }
 }
-
-const t = setInterval(() => {}, 1000);
-main().finally(() => clearInterval(t));

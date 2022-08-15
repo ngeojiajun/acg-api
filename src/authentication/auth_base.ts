@@ -44,7 +44,7 @@ export default class BasicAuthenticationProider implements AuthProvider {
     this.#tokens = this.#tokens.filter((z) => new Date().getTime() - z.exp < 0);
     for (const tokenInfo of this.#tokens) {
       //touch its expiry date
-      tokenInfo.exp = new Date().getTime() + 120000;
+      tokenInfo.exp = new Date().getTime() + 360000;
       if (token === tokenInfo.token) {
         return true;
       }

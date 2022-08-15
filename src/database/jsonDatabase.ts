@@ -54,6 +54,7 @@ import {
 import {
   ERROR_DUPLICATE_ENTRY,
   ERROR_ENTRY_NOT_FOUND,
+  ERROR_HAVING_REMOTE_DEPENCENCIES,
   ERROR_INTEGRITY_TEST_FAILED,
   ERROR_INVALID_DATA,
   ERROR_PATCH_FAILED,
@@ -148,127 +149,61 @@ export default class JsonDatabase implements IDatabase {
     id: KeyedEntry["id"],
     delta: Partial<Omit<DatabaseTypesMapping[T], "id">>
   ): Promise<Status> {
-    //take a mutex
-    const mutex_release = await this.#mutex.tryLock();
-    try {
-      switch (type) {
-        case "ANIME": {
-          //get an effective copy of it
-          let data = await this.#getData(type, id, asAnimeEntryInternal, false);
-          if (!data) {
-            return constructStatus(
-              false,
-              "Entry not found",
-              ERROR_ENTRY_NOT_FOUND
-            );
-          }
-          //try to perform patch on it
-          let patched = patchObjectSecure(data, delta, asAnimeEntryInternal, [
-            "id",
-          ]);
-          if (!patched) {
-            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
-          }
-          //now perform few checks
-          //ensure the new data is valid for the table integrity
-          let status: Status = await checkRemoteReferencesAnimeEntry(
-            this,
-            patched
-          );
-          if (!status.success) {
-            return constructStatus(
-              false,
-              "Cannot patch the data as " + status.message,
-              ERROR_INTEGRITY_TEST_FAILED
-            );
-          }
-          //commit the changes
-          this.#database.anime!.mutated = true;
-          Object.assign(data, patched);
-          return constructStatus(true);
-        }
-        case "CATEGORY": {
-          //get an effective copy of it
-          let data = await this.#getData(type, id, asAnimeEntryInternal, false);
-          if (!data) {
-            return constructStatus(
-              false,
-              "Entry not found",
-              ERROR_ENTRY_NOT_FOUND
-            );
-          }
-          //try to perform patch on it
-          let patched = patchObjectSecure(data, delta, asAnimeEntryInternal, [
-            "id",
-          ]);
-          if (!patched) {
-            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
-          }
-          //no remote check needed for this
-          //just patch it directly
-          this.#database.categories!.mutated = true;
-          Object.assign(data, patched);
-          return constructStatus(true);
-        }
-        case "PERSON": {
-          //get an effective copy of it
-          let data = await this.#getData(type, id, asPeople, false);
-          if (!data) {
-            return constructStatus(
-              false,
-              "Entry not found",
-              ERROR_ENTRY_NOT_FOUND
-            );
-          }
-          //try to perform patch on it
-          let patched = patchObjectSecure(data, delta, asPeople, ["id"]);
-          if (!patched) {
-            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
-          }
-          //no remote check needed for this
-          //just patch it directly
-          this.#database.person!.mutated = true;
-          Object.assign(data, patched);
-          return constructStatus(true);
-        }
-        case "CHARACTER": {
-          //get an effective copy of it
-          let data = await this.#getData(type, id, asCharacter, false);
-          if (!data) {
-            return constructStatus(
-              false,
-              "Entry not found",
-              ERROR_ENTRY_NOT_FOUND
-            );
-          }
-          //try to perform patch on it
-          let patched = patchObjectSecure(data, delta, asCharacter, ["id"]);
-          if (!patched) {
-            return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
-          }
-          //check for remote references
-          //ensure the new data is valid for the table integrity
-          let status: Status = await checkRemoteReferencesCharacter(
-            this,
-            patched
-          );
-          if (!status.success) {
-            return constructStatus(
-              false,
-              "Cannot patch the data as " + status.message,
-              ERROR_INTEGRITY_TEST_FAILED
-            );
-          }
-          //just patch it directly
-          this.#database.characters!.mutated = true;
-          Object.assign(data, patched);
-          return constructStatus(true);
-        }
+    switch (type) {
+      case "ANIME": {
+        return this.#updateDataInternal(
+          "ANIME",
+          id,
+          delta,
+          [
+            { key: "name", op: "EQUALS_INSENSITIVE" },
+            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+          ],
+          this.#database.anime!,
+          asAnimeEntryInternal,
+          checkRemoteReferencesAnimeEntry
+        );
       }
-      return constructStatus(false, "Unimplemented");
-    } finally {
-      mutex_release();
+      case "CHARACTER": {
+        return this.#updateDataInternal(
+          "CHARACTER",
+          id,
+          delta,
+          [
+            { key: "name", op: "EQUALS_INSENSITIVE" },
+            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+            { key: "gender", op: "EQUALS" },
+          ],
+          this.#database.characters!,
+          asCharacter,
+          checkRemoteReferencesCharacter
+        );
+      }
+      case "PERSON": {
+        return this.#updateDataInternal(
+          "PERSON",
+          id,
+          delta,
+          [
+            { key: "name", op: "EQUALS_INSENSITIVE" },
+            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+          ],
+          this.#database.person!,
+          asPeople
+        );
+      }
+      case "CATEGORY": {
+        return this.#updateDataInternal(
+          "CATEGORY",
+          id,
+          delta,
+          [{ key: "name", op: "EQUALS_INSENSITIVE" }],
+          this.#database.categories!,
+          asCategory
+        );
+      }
     }
+    return constructStatus(false, "Unimplemented");
   }
 
   /**
@@ -300,21 +235,14 @@ export default class JsonDatabase implements IDatabase {
       if (!cast) {
         return constructStatus(false, "Invalid data", ERROR_INVALID_DATA);
       }
-      //ensure the data is not clashing with current one
-      let iterator = this.iterateKeysIf(type, cast, equality);
-      if (!(await iterator.next()).done) {
-        //ask iterator to release the mutex immediately (NOP but good practise)
-        //the mutex is not actually locked by iterator as the writing lock is owned
-        iterator.next(true);
-        //there are conflicts
-        return constructStatus(
-          false,
-          "The data might be already in database",
-          ERROR_DUPLICATE_ENTRY
-        );
-      }
       //check for the status
-      let status = await verifier(this, cast);
+      let status = await this.#verifyDataForInclusion(
+        type,
+        cast,
+        null,
+        equality,
+        verifier
+      );
       if (!status.success) {
         return status;
       }
@@ -327,6 +255,55 @@ export default class JsonDatabase implements IDatabase {
     }
   }
 
+  async #updateDataInternal<T extends DatabaseTypes>(
+    type: T,
+    id: KeyedEntry["id"],
+    delta: Partial<Omit<DatabaseTypesMapping[T], "id">>,
+    equality: Condition<DatabaseTypesMapping[T]>[],
+    handle: Cached<DatabaseTypesMapping[T]>,
+    converter: (e: any) => DatabaseTypesMapping[T] | null,
+    verifier: (
+      db: IDatabase,
+      e: DatabaseTypesMapping[T]
+    ) => Promise<Status> = async (_, __) => constructStatus(true)
+  ): Promise<Status> {
+    let mutex_release = await this.#mutex.tryLock();
+    try {
+      //get an effective copy of it
+      let data = await this.#getData(type, id, converter, false);
+      if (!data) {
+        return constructStatus(false, "Entry not found", ERROR_ENTRY_NOT_FOUND);
+      }
+      //try to perform patch on it
+      let patched = patchObjectSecure(data, delta, converter, ["id"]);
+      if (!patched) {
+        return constructStatus(false, "Invalid patch", ERROR_PATCH_FAILED);
+      }
+      //now perform few checks
+      //ensure it is not duplicated and also
+      //ensure the new data is valid for the table integrity
+      let status: Status = await this.#verifyDataForInclusion(
+        type,
+        patched,
+        id,
+        equality,
+        verifier
+      );
+      if (!status.success) {
+        return constructStatus(
+          false,
+          "Cannot patch the data as " + status.message,
+          ERROR_INTEGRITY_TEST_FAILED
+        );
+      }
+      //commit the changes
+      handle.mutated = true;
+      Object.assign(data, patched);
+      return constructStatus(true);
+    } finally {
+      mutex_release();
+    }
+  }
   async init() {
     let mutex_release = await this.#mutex.tryLock();
     try {
@@ -638,7 +615,7 @@ export default class JsonDatabase implements IDatabase {
             {
               key: "category",
               op: "INCLUDES_SET",
-              rhs: id,
+              rhs: [id],
             },
           ]);
           if (!(await iterator.next()).done) {
@@ -646,7 +623,7 @@ export default class JsonDatabase implements IDatabase {
             return constructStatus(
               false,
               "Cannot delete the entry because it is referenced by entry in ANIME",
-              ERROR_INTEGRITY_TEST_FAILED
+              ERROR_HAVING_REMOTE_DEPENCENCIES
             );
           }
           if (!removeEntryById(table, id)) {
@@ -667,12 +644,12 @@ export default class JsonDatabase implements IDatabase {
               {
                 key: "publisher",
                 op: "INCLUDES_SET",
-                rhs: id,
+                rhs: [id],
               },
               {
                 key: "author",
                 op: "INCLUDES_SET",
-                rhs: id,
+                rhs: [id],
               },
             ],
             "OR"
@@ -682,7 +659,7 @@ export default class JsonDatabase implements IDatabase {
             return constructStatus(
               false,
               "Cannot delete the entry because it is referenced by entry in ANIME",
-              ERROR_INTEGRITY_TEST_FAILED
+              ERROR_HAVING_REMOTE_DEPENCENCIES
             );
           }
           if (!removeEntryById(table, id)) {
@@ -761,6 +738,50 @@ export default class JsonDatabase implements IDatabase {
       console.log("Saved");
       mutex_release();
     }
+  }
+
+  /**
+   * Verify the data using the verifiers provided so that the database's integrity will not be
+   * compromised after the inclusion of this
+   * @param type the database table type the data is checked against
+   * @param data the data to check
+   * @param id the data's original id (to ignore when checking for collision)
+   * @param equality the list of checks for it to be qualify as equals
+   * @param verifier function to check the remote references
+   */
+  async #verifyDataForInclusion<
+    T extends DatabaseTypes,
+    dataType extends KeyedEntry = DatabaseTypesMapping[T]
+  >(
+    type: T,
+    data: dataType,
+    id: KeyedEntry["id"] | null,
+    equality: Condition<dataType>[],
+    verifier: (db: IDatabase, e: dataType) => Promise<Status> = async (_, __) =>
+      constructStatus(true)
+  ): Promise<Status> {
+    //ensure the data is not clashing with current one
+    let iterator = this.iterateKeysIf(type, data, equality);
+    let result = await iterator.next();
+    if (!result.done) {
+      //ask iterator to release the mutex immediately (NOP but good practise)
+      //the mutex is not actually locked by iterator as the writing lock is owned
+      iterator.next(true);
+      //there are conflicts
+      if (result.value != id) {
+        return constructStatus(
+          false,
+          "The data might be already in database",
+          ERROR_DUPLICATE_ENTRY
+        );
+      }
+    }
+    //check for the status
+    let status = await verifier(this, data);
+    if (!status.success) {
+      return status;
+    }
+    return constructStatus(true);
   }
   /**
    * Save the table as JSON into file
