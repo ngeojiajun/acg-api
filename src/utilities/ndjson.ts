@@ -2,7 +2,7 @@
  * New-line delimited JSON serialiation utilities
  */
 
-import { createReadStream, createWriteStream } from "fs";
+import { createReadStream, createWriteStream, existsSync } from "fs";
 
 export declare type NDJsonInfo = {
   payload: any[];
@@ -14,6 +14,9 @@ export declare type NDJsonInfo = {
  * @returns parsed data
  */
 export function parseNDJson(path: string): Promise<NDJsonInfo> {
+  if (!existsSync(path)) {
+    throw new Error(`File ${path} not exists`);
+  }
   let stream = createReadStream(path, { encoding: "utf-8" });
   let return_val: any[] = [];
   let buff = "";
