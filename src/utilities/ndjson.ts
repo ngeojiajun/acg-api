@@ -3,6 +3,8 @@
  */
 
 import { createReadStream, createWriteStream, existsSync } from "fs";
+import { mkdir } from "fs/promises";
+import { dirname } from "path";
 
 export declare type NDJsonInfo = {
   payload: any[];
@@ -94,7 +96,9 @@ export function writeNDJson(
   data: any[],
   version: number = 1
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    //create the containing folder if it missing
+    await mkdir(dirname(path), { recursive: true });
     let stream = createWriteStream(path);
     stream.on("error", reject);
     stream.on("finish", resolve);
