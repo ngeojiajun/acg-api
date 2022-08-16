@@ -1,8 +1,9 @@
-import { mkdtempSync, PathLike, rmdirSync } from "fs";
+import { mkdtempSync, PathLike, rmSync } from "fs";
 import path from "path";
 import os from "os";
 import { CachedTests } from "./cached";
 import { IntegrityTest } from "./integrity_test";
+import { JsonDatabaseTests } from "./jsonDatabase";
 
 /**
  * The test engine for the project
@@ -10,6 +11,7 @@ import { IntegrityTest } from "./integrity_test";
 const tests: ((_tmp: PathLike) => Promise<void>)[] = [
   IntegrityTest,
   CachedTests,
+  JsonDatabaseTests,
 ];
 
 async function main() {
@@ -27,11 +29,12 @@ async function main() {
       console.log(e);
       console.log(`Test ${name} failed`);
       //free the directory
-      rmdirSync(tmpDir);
+      rmSync(tmpDir, { recursive: true });
       process.exit(-1);
     }
   }
-  rmdirSync(tmpDir);
+  //free the directory
+  rmSync(tmpDir, { recursive: true });
 }
 
 const t = setInterval(() => {}, 1000);
