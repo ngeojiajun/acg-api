@@ -1,5 +1,5 @@
 import { PathLike } from "fs";
-import { IDatabase } from "../database/database";
+import { DatabaseTypes, IDatabase } from "../database/database";
 import JsonDatabase from "../database/jsonDatabase";
 import { AnimeEntryInternal } from "../definitions/anime.internal";
 import { Category, Character, People } from "../definitions/core";
@@ -107,6 +107,26 @@ export async function JsonDatabaseTests(_temp: PathLike) {
       await database.updateData("PERSON", 2, testPerson),
       "Update the data so it similar for another entry"
     );
+    //test the delete
+    console.log("Testing the delete operations");
+    assertFail(
+      await database.removeData("ANIME", 1),
+      "Removing data which referred by others"
+    );
+    assertFail(
+      await database.removeData("CATEGORY", 1),
+      "Removing data which referred by others"
+    );
+    assertFail(
+      await database.removeData("PERSON", 1),
+      "Removing data which referred by others"
+    );
+    const types: DatabaseTypes[] = ["CHARACTER", "ANIME", "PERSON", "CATEGORY"];
+    for (const type of types) {
+      for (let i = 0; i < 2; i++) {
+        await database.removeData(type, i);
+      }
+    }
   } finally {
     await database.close();
   }
