@@ -4,6 +4,7 @@ import JsonDatabase from "../database/jsonDatabase";
 import { AnimeEntryInternal } from "../definitions/anime.internal";
 import { Category, Character, People } from "../definitions/core";
 import { assertFail, assertSuccess } from "./common_utils";
+import "../utilities/prototype_patch";
 
 const testCategory1: Category = {
   id: 1,
@@ -55,6 +56,57 @@ export async function JsonDatabaseTests(_temp: PathLike) {
     assertSuccess(await database.addData("CATEGORY", testCategory1));
     assertSuccess(await database.addData("ANIME", testAnime1));
     assertSuccess(await database.addData("CHARACTER", testCharacter));
+    console.log("Testing illegal operations: addData");
+    assertFail(
+      await database.addData("PERSON", testPerson),
+      "Adding duplicated data"
+    );
+    assertFail(
+      await database.addData("CATEGORY", testCategory1),
+      "Adding duplicated data"
+    );
+    assertFail(
+      await database.addData("ANIME", testAnime1),
+      "Adding duplicated data"
+    );
+    assertFail(
+      await database.addData("CHARACTER", testCharacter),
+      "Adding duplicated data"
+    );
+    //change the data a little bit
+    testPerson.name = "123311";
+    testCategory1.name = "123311";
+    testCharacter.name = "123311";
+    testAnime1.name = "123311";
+    console.log("Adding another row");
+    assertSuccess(await database.addData("PERSON", testPerson));
+    assertSuccess(await database.addData("CATEGORY", testCategory1));
+    assertSuccess(await database.addData("ANIME", testAnime1));
+    assertSuccess(await database.addData("CHARACTER", testCharacter));
+    console.log("Testing illegal operations: updateData");
+    //undoing the changes
+    testAnime1.name = "chicken";
+    testCategory1.name = "fish";
+    testCharacter.name = "Haruka";
+    testPerson.name = "hana";
+    //edit the second entry so it is similar to the first
+    //but it should be fails
+    assertFail(
+      await database.updateData("ANIME", 2, testAnime1),
+      "Update the data so it similar for another entry"
+    );
+    assertFail(
+      await database.updateData("CATEGORY", 2, testCategory1),
+      "Update the data so it similar for another entry"
+    );
+    assertFail(
+      await database.updateData("CHARACTER", 2, testCharacter),
+      "Update the data so it similar for another entry"
+    );
+    assertFail(
+      await database.updateData("PERSON", 2, testPerson),
+      "Update the data so it similar for another entry"
+    );
   } finally {
     await database.close();
   }
