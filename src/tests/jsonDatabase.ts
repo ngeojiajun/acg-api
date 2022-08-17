@@ -123,8 +123,8 @@ export async function JsonDatabaseTests(_temp: PathLike) {
     );
     const types: DatabaseTypes[] = ["CHARACTER", "ANIME", "PERSON", "CATEGORY"];
     for (const type of types) {
-      for (let i = 0; i < 2; i++) {
-        await database.removeData(type, i);
+      for (let i = 1; i < 3; i++) {
+        assertSuccess(await database.removeData(type, i));
       }
     }
   } finally {
