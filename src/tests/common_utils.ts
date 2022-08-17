@@ -10,6 +10,14 @@ export function assertSuccess(result: Status) {
   }
 }
 
+export function assertFail(result: Status, tag: string = "unknown") {
+  if (result.success) {
+    fail(
+      `The operation with tag=${tag} are completed with succeeded even it is not supposed to be`
+    );
+  }
+}
+
 export async function assertThrow(
   f: () => void | Promise<void>,
   tag: string = "Unknown"

@@ -88,6 +88,24 @@ export function queryDataValidityStatus(
 }
 
 /**
+ * Get the maximum supported version of the table of this implementation
+ */
+export function getMaximumSupportedVersion(type: DatabaseTypes): number {
+  switch (type) {
+    case "ANIME":
+      return ANIME_TABLE_VERSION;
+    case "CATEGORY":
+      return CATEGORY_TABLE_VERSION;
+    case "CHARACTER":
+      return CHARACTER_TABLE_VERSION;
+    case "PERSON":
+      return PERSON_TABLE_VERSION;
+    default:
+      throw new Error("Unimplemented");
+  }
+}
+
+/**
  * Migrate the stuffs
  * @param data
  * @param type

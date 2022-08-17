@@ -2,7 +2,9 @@
  * New-line delimited JSON serialiation utilities
  */
 
-import { createReadStream, createWriteStream } from "fs";
+import { createReadStream, createWriteStream, existsSync } from "fs";
+import { mkdir } from "fs/promises";
+import { dirname } from "path";
 
 export declare type NDJsonInfo = {
   payload: any[];
@@ -14,6 +16,9 @@ export declare type NDJsonInfo = {
  * @returns parsed data
  */
 export function parseNDJson(path: string): Promise<NDJsonInfo> {
+  if (!existsSync(path)) {
+    throw new Error(`File ${path} not exists`);
+  }
   let stream = createReadStream(path, { encoding: "utf-8" });
   let return_val: any[] = [];
   let buff = "";
@@ -91,7 +96,9 @@ export function writeNDJson(
   data: any[],
   version: number = 1
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    //create the containing folder if it missing
+    await mkdir(dirname(path), { recursive: true });
     let stream = createWriteStream(path);
     stream.on("error", reject);
     stream.on("finish", resolve);
