@@ -101,16 +101,19 @@ export function removeEntryById<T extends KeyedEntry>(
   let { cache, entries } = table;
   let index = cache[id];
   if (index !== undefined) {
+    //nuke the cache
+    table.cache = {};
     //use the index to remove the stuffs
-    delete cache[id];
     entries.splice(index, 1);
     table.mutated = true;
     return true;
   }
   for (let i = 0; i < entries.length; i++) {
     if (entries[i].id === id) {
-      entries.splice(i, i);
+      entries.splice(i, 1);
       table.mutated = true;
+      //nuke the cache
+      table.cache = {};
       return true;
     }
   }
