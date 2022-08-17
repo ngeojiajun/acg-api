@@ -5,7 +5,7 @@ import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
 } from "../definitions/anime.internal";
-import { asCategory } from "../definitions/converters";
+import { asCategory, asPeople } from "../definitions/converters";
 import {
   Category,
   Character,
@@ -26,6 +26,8 @@ export default class AnimeApi {
     app.get("/all", this.#getAnimes.bind(this));
     app.get("/search", this.#searchAnimes.bind(this));
     app.get("/categories", this.#listCategories.bind(this));
+    app.get("/persons", this.#listPersons.bind(this));
+    app.get("/person/:id", this.#getAnimesByPerson.bind(this));
     app.get("/category/:id", this.#getAnimesByCategory.bind(this));
     app.get("/:id/characters", this.#getAnimeCharactersById.bind(this));
     app.get("/:id", this.#getAnimeById.bind(this));
@@ -136,6 +138,30 @@ export default class AnimeApi {
   }
 
   /**
+   * Get all persons
+   * @route /persons
+   */
+  async #listPersons(
+    _request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      let response_json: People[] = [];
+      for await (const key of this.#database.iterateKeys("PERSON")) {
+        //note this one always success because the validation done
+        let entry = await this.#database.getData("PERSON", key, asPeople);
+        if (entry) {
+          response_json.push(entry);
+        }
+      }
+      response.status(200).type("json").json(response_json).end();
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  /**
    * Get all animes
    * @route /all
    */
@@ -219,6 +245,48 @@ export default class AnimeApi {
         let iterator = this.#database.iterateKeysIf<"ANIME">("ANIME", null, [
           { key: "category", op: "INCLUDES_SET", rhs: [id] },
         ]);
+        //add those into the result set
+        for await (const key of iterator) {
+          let data = await this.#dbGetAnimeById(key);
+          if (data) result.push(data);
+        }
+        response.status(200).type("json").json(result);
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  /**
+   * Get search animes
+   * @route /person/:id
+   */
+  async #getAnimesByPerson(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //try to get the id
+      let id = tryParseInteger(request.params.id);
+      if (!id) {
+        this.#sendEntryNotFound(response);
+        return;
+      } else if (!(await this.#database.getData("PERSON", id, asPeople))) {
+        //return 404 when the category id itself is not existant
+        this.#sendEntryNotFound(response);
+        return;
+      } else {
+        //search all animes related to the specified id
+        let result: AnimeEntry[] = [];
+        let iterator = this.#database.iterateKeysIf<"ANIME">(
+          "ANIME",
+          null,
+          [
+            { key: "author", op: "INCLUDES_SET", rhs: [id] },
+            { key: "publisher", op: "INCLUDES_SET", rhs: [id] },
+          ],
+          "OR"
+        );
         //add those into the result set
         for await (const key of iterator) {
           let data = await this.#dbGetAnimeById(key);
