@@ -21,7 +21,7 @@ export function constructStatus(
  * @param entry Entry to test
  * @returns Check result
  */
-export async function checkRemoteReferencesAnimeEntry(
+export async function checkRemoteReferencesACGEntry(
   db: IDatabase,
   entry: AnimeEntryInternal
 ): Promise<Status> {
@@ -58,6 +58,9 @@ export async function checkRemoteReferencesAnimeEntry(
   return constructStatus(true);
 }
 
+export const checkRemoteReferencesAnimeEntry = checkRemoteReferencesACGEntry;
+export const checkRemoteReferencesMangaEntry = checkRemoteReferencesACGEntry;
+
 /**
  * Perform integrity check on remote references
  * @param db Database handle
@@ -81,6 +84,21 @@ export async function checkRemoteReferencesCharacter(
             return constructStatus(
               false,
               `Failed to resolve pointer ANIME{id=${presence.id}} at CHARACTER{id=${entry.id}}`,
+              ERROR_INTEGRITY_TEST_FAILED
+            );
+          }
+        }
+        break;
+      case "manga":
+        {
+          let data: AnimeEntryInternal | null = await db.getData(
+            "MANGA",
+            presence.id
+          );
+          if (!data) {
+            return constructStatus(
+              false,
+              `Failed to resolve pointer MANGA{id=${presence.id}} at CHARACTER{id=${entry.id}}`,
               ERROR_INTEGRITY_TEST_FAILED
             );
           }

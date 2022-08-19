@@ -12,12 +12,14 @@ import {
   People,
   Status,
 } from "../definitions/core";
+import { MangaEntryInternal } from "../definitions/manga.internal";
 
 export declare type DatabaseTypes =
   | "ANIME"
   | "CHARACTER"
   | "PERSON"
-  | "CATEGORY";
+  | "CATEGORY"
+  | "MANGA";
 
 export declare type CompareOperations =
   | "EQUALS"
@@ -61,6 +63,7 @@ export declare type Condition<
  */
 export declare type DatabaseTypesMapping = {
   ANIME: AnimeEntryInternal;
+  MANGA: MangaEntryInternal;
   CHARACTER: Character;
   PERSON: People;
   CATEGORY: Category;

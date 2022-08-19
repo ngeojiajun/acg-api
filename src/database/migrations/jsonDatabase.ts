@@ -24,6 +24,10 @@ import {
   Gender,
   People,
 } from "../../definitions/core";
+import {
+  asMangaEntryInternal,
+  MangaEntryInternal,
+} from "../../definitions/manga.internal";
 import { NDJsonInfo } from "../../utilities/ndjson";
 import { DatabaseTypes, DatabaseTypesMapping } from "../database";
 
@@ -32,6 +36,7 @@ import { DatabaseTypes, DatabaseTypesMapping } from "../database";
 //
 
 export const ANIME_TABLE_VERSION = 1;
+export const MANGA_TABLE_VERSION = 1;
 export const CATEGORY_TABLE_VERSION = 1;
 export const CHARACTER_TABLE_VERSION = 2;
 export const PERSON_TABLE_VERSION = 1;
@@ -71,6 +76,7 @@ export function queryDataValidityStatus(
     case "ANIME":
     case "CATEGORY":
     case "PERSON":
+    case "MANGA":
       return data.version === ANIME_TABLE_VERSION
         ? TABLE_COMPATIBILITY_STATE.OK
         : TABLE_COMPATIBILITY_STATE.INVALID;
@@ -100,6 +106,8 @@ export function getMaximumSupportedVersion(type: DatabaseTypes): number {
       return CHARACTER_TABLE_VERSION;
     case "PERSON":
       return PERSON_TABLE_VERSION;
+    case "MANGA":
+      return MANGA_TABLE_VERSION;
     default:
       throw new Error("Unimplemented");
   }
@@ -117,6 +125,8 @@ export function migrate<
   switch (type) {
     case "ANIME":
       return migrateAnimeTable(data) as D[] | null; //definitely castable
+    case "MANGA":
+      return migrateMangaTable(data) as D[] | null;
     case "CATEGORY":
       return migrateCategoryTable(data) as D[] | null;
     case "CHARACTER":
@@ -140,6 +150,18 @@ export function migrateAnimeTable(
   }
 }
 
+export function migrateMangaTable(
+  data: NDJsonInfo
+): AnimeEntryInternal[] | null {
+  const status = queryDataValidityStatus(data, "MANGA");
+  if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
+    return null;
+  } else if (status === TABLE_COMPATIBILITY_STATE.OK) {
+    return asArrayOf<MangaEntryInternal>(data.payload, asMangaEntryInternal);
+  } else {
+    throw Error("Unimplemented"); //never happen for now
+  }
+}
 export function migrateCategoryTable(data: NDJsonInfo): Category[] | null {
   const status = queryDataValidityStatus(data, "CATEGORY");
   if (status === TABLE_COMPATIBILITY_STATE.INVALID) {

@@ -1,5 +1,5 @@
 import express, { Application, NextFunction, Request, Response } from "express";
-import { Condition, IDatabase } from "../database/database";
+import { Condition, DatabaseTypes, IDatabase } from "../database/database";
 import { asCharacter } from "../definitions/converters";
 import { Character } from "../definitions/core";
 import { tryParseInteger } from "../utils";
@@ -29,8 +29,12 @@ export default class CharacterApi {
     for (const entry of value.presentOn) {
       //resolve the stuffs
       switch (entry.type) {
-        case "anime": {
-          let resolved = await this.#database.getData("ANIME", entry.id);
+        case "anime":
+        case "manga": {
+          let resolved = await this.#database.getData(
+            entry.type.toUpperCase() as DatabaseTypes,
+            entry.id
+          );
           if (!resolved) {
             console.error(`Cannot resolve dependency at CHARACTER id=${id}`);
             return null;
