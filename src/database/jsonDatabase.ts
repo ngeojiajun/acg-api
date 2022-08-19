@@ -523,7 +523,7 @@ export default class JsonDatabase implements IDatabase {
                 throw new Error("Cannot eval null");
               }
               let _condition = condition as Condition<dataType, "EVAL_JS">;
-              let result = _condition.rhs?.(lhs);
+              let result = _condition.rhs?.(lhs, another?.[condition.key]);
               if (!result && chaining === "AND") {
                 return false;
               } else if (result && chaining === "OR") {
@@ -818,8 +818,30 @@ export default class JsonDatabase implements IDatabase {
           { key: "name", op: "EQUALS_INSENSITIVE" },
           { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
           { key: "gender", op: "EQUALS" },
-          { key: "presentOn", op: "INCLUDES_SET" },
-        ] as any;
+          {
+            key: "presentOn",
+            op: "EVAL_JS",
+            rhs: (
+              lhs: CharacterPresence[],
+              rhs: CharacterPresence[]
+            ): boolean => {
+              //the presentOn contains the array of object which cannot be easily compared in JS
+              //the only way to perform the comparism is to perform the check is checking its props
+              //manually
+              for (const entryRhs of rhs) {
+                for (const entryLhs of lhs) {
+                  if (
+                    entryRhs.id === entryLhs.id &&
+                    entryRhs.type === entryLhs.type
+                  ) {
+                    return true;
+                  }
+                }
+              }
+              return false;
+            },
+          },
+        ] as Condition<any>[];
       }
       case "PERSON": {
         return [
