@@ -850,7 +850,8 @@ export default class JsonDatabase implements IDatabase {
           payload: [],
           version: getMaximumSupportedVersion(type),
         },
-        type
+        type,
+        true
       );
       return;
     }
@@ -948,8 +949,13 @@ export default class JsonDatabase implements IDatabase {
    * Validate and register the data as compatible with certain schema
    * @param table the table data
    * @param validate_as the target database to register to
+   * @param new_table whether the table provided is a entirely new table
    */
-  #validateTable(table: NDJsonInfo, validate_as: DatabaseTypes) {
+  #validateTable(
+    table: NDJsonInfo,
+    validate_as: DatabaseTypes,
+    new_table: boolean = false
+  ) {
     console.log(
       `JSONDatabase: registering table ${validate_as} with schema version ${table.version}`
     );
@@ -975,28 +981,29 @@ export default class JsonDatabase implements IDatabase {
       switch (validate_as) {
         case "ANIME":
           console.log(`Migrated to version ${ANIME_TABLE_VERSION}`);
-          this.#database.anime = makeCached(parsed as AnimeEntryInternal[]);
-          this.#database.anime.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.anime = makeCached(
+            parsed as AnimeEntryInternal[],
+            true
+          );
           break;
         case "MANGA":
           console.log(`Migrated to version ${MANGA_TABLE_VERSION}`);
-          this.#database.manga = makeCached(parsed as MangaEntryInternal[]);
-          this.#database.manga.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.manga = makeCached(
+            parsed as MangaEntryInternal[],
+            true
+          );
           break;
         case "CATEGORY":
           console.log(`Migrated to version ${CATEGORY_TABLE_VERSION}`);
-          this.#database.categories = makeCached(parsed as Category[]);
-          this.#database.categories.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.categories = makeCached(parsed as Category[], true);
           break;
         case "CHARACTER":
           console.log(`Migrated to version ${CHARACTER_TABLE_VERSION}`);
-          this.#database.characters = makeCached(parsed as Character[]);
-          this.#database.characters.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.characters = makeCached(parsed as Character[], true);
           break;
         case "PERSON":
           console.log(`Migrated to version ${PERSON_TABLE_VERSION}`);
-          this.#database.person = makeCached(parsed as People[]);
-          this.#database.person.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.person = makeCached(parsed as People[], true);
           break;
       }
       return;
@@ -1012,7 +1019,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.anime = makeCached(parsed);
+          this.#database.anime = makeCached(parsed, new_table);
         }
         break;
       case "MANGA":
@@ -1025,7 +1032,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.manga = makeCached(parsed);
+          this.#database.manga = makeCached(parsed, new_table);
         }
         break;
       case "PERSON":
@@ -1040,7 +1047,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.person = makeCached(parsed);
+          this.#database.person = makeCached(parsed, new_table);
         }
         break;
       case "CHARACTER":
@@ -1055,7 +1062,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.characters = makeCached(parsed);
+          this.#database.characters = makeCached(parsed, new_table);
         }
         break;
       case "CATEGORY":
@@ -1070,7 +1077,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.categories = makeCached(parsed);
+          this.#database.categories = makeCached(parsed, new_table);
         }
         break;
     }
