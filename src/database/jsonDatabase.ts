@@ -128,6 +128,7 @@ export default class JsonDatabase implements IDatabase {
             { key: "name", op: "EQUALS_INSENSITIVE" },
             { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
             { key: "gender", op: "EQUALS" },
+            { key: "presentOn", op: "INCLUDES_SET" },
           ],
           asCharacter,
           checkRemoteReferencesCharacter
@@ -175,6 +176,7 @@ export default class JsonDatabase implements IDatabase {
             { key: "name", op: "EQUALS_INSENSITIVE" },
             { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
             { key: "gender", op: "EQUALS" },
+            { key: "presentOn", op: "INCLUDES_SET" },
           ],
           this.#database.characters!,
           asCharacter,
