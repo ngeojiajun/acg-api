@@ -106,10 +106,7 @@ export default class JsonDatabase implements IDatabase {
         return this.#addDataInternal<"ANIME", AnimeEntryInternal>(
           type,
           data as AnimeEntryInternal,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("ANIME"),
           asAnimeEntryInternal,
           checkRemoteReferencesAnimeEntry
         );
@@ -117,19 +114,14 @@ export default class JsonDatabase implements IDatabase {
         return this.#addDataInternal<"CATEGORY", Category>(
           type,
           data,
-          [{ key: "name", op: "EQUALS_INSENSITIVE" }],
+          this.#getEqualityConditionForType("CATEGORY"),
           asCategory
         );
       case "CHARACTER":
         return this.#addDataInternal<"CHARACTER", Character>(
           type,
           data as Character,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-            { key: "gender", op: "EQUALS" },
-            { key: "presentOn", op: "INCLUDES_SET" },
-          ],
+          this.#getEqualityConditionForType("CHARACTER"),
           asCharacter,
           checkRemoteReferencesCharacter
         );
@@ -137,10 +129,7 @@ export default class JsonDatabase implements IDatabase {
         return this.#addDataInternal<"PERSON", People>(
           type,
           data as People,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("PERSON"),
           asPeople
         );
     }
@@ -158,10 +147,7 @@ export default class JsonDatabase implements IDatabase {
           "ANIME",
           id,
           delta,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("ANIME"),
           this.#database.anime!,
           asAnimeEntryInternal,
           checkRemoteReferencesAnimeEntry
@@ -172,12 +158,7 @@ export default class JsonDatabase implements IDatabase {
           "CHARACTER",
           id,
           delta,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-            { key: "gender", op: "EQUALS" },
-            { key: "presentOn", op: "INCLUDES_SET" },
-          ],
+          this.#getEqualityConditionForType("CHARACTER"),
           this.#database.characters!,
           asCharacter,
           checkRemoteReferencesCharacter
@@ -188,10 +169,7 @@ export default class JsonDatabase implements IDatabase {
           "PERSON",
           id,
           delta,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("PERSON"),
           this.#database.person!,
           asPeople
         );
@@ -201,7 +179,7 @@ export default class JsonDatabase implements IDatabase {
           "CATEGORY",
           id,
           delta,
-          [{ key: "name", op: "EQUALS_INSENSITIVE" }],
+          this.#getEqualityConditionForType("CATEGORY"),
           this.#database.categories!,
           asCategory
         );
@@ -825,6 +803,35 @@ export default class JsonDatabase implements IDatabase {
     let data: NDJsonInfo = await parseNDJson(filename);
     //load it into the database
     this.#validateTable(data, type);
+  }
+  #getEqualityConditionForType<T extends DatabaseTypes>(
+    type: T
+  ): Condition<DatabaseTypesMapping[T]>[] {
+    switch (type) {
+      case "ANIME":
+        return [
+          { key: "name", op: "EQUALS_INSENSITIVE" },
+          { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+        ] as any;
+      case "CHARACTER": {
+        return [
+          { key: "name", op: "EQUALS_INSENSITIVE" },
+          { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+          { key: "gender", op: "EQUALS" },
+          { key: "presentOn", op: "INCLUDES_SET" },
+        ] as any;
+      }
+      case "PERSON": {
+        return [
+          { key: "name", op: "EQUALS_INSENSITIVE" },
+          { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+        ] as any;
+      }
+      case "CATEGORY": {
+        return [{ key: "name", op: "EQUALS_INSENSITIVE" }];
+      }
+    }
+    throw new Error("Unimplemented types");
   }
   /**
    * Internal use only: get the internal table
