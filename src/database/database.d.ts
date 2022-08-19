@@ -40,7 +40,7 @@ export declare type CompareOperationOperand = {
   INCLUDES: string;
   INCLUDES_INSENSITIVE: string;
   INCLUDES_SET: Array<any>;
-  EVAL_JS: (e: any) => boolean;
+  EVAL_JS: (lhs: any, rhs: any) => boolean;
 };
 
 /**
