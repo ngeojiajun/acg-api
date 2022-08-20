@@ -1,5 +1,5 @@
 import express, { Application, NextFunction, Request, Response } from "express";
-import { Condition, IDatabase } from "../database/database";
+import { Condition, DatabaseTypes, IDatabase } from "../database/database";
 import { AnimeEntry } from "../definitions/anime";
 import {
   AnimeEntryInternal,
@@ -374,10 +374,33 @@ export default class AnimeApi {
             "CHARACTER",
             entry
           );
-          if (data) {
-            //add the name into it
-            (data.presentOn as any).name = anime_data.name;
-            result.push(data);
+          if (!data) {
+            continue;
+          }
+          //add some data for it
+          for (const entry of data.presentOn) {
+            //resolve the stuffs
+            switch (entry.type) {
+              case "anime":
+              case "manga": {
+                let resolved = await this.#database.getData(
+                  entry.type.toUpperCase() as DatabaseTypes,
+                  entry.id
+                );
+                if (!resolved) {
+                  console.error(
+                    `Cannot resolve dependency at CHARACTER id=${id}`
+                  );
+                  return null;
+                } else {
+                  (entry as any).name = resolved.name;
+                }
+                break;
+              }
+              default:
+                console.error(`Unimplemented type ${entry.type}`);
+                return null;
+            }
           }
         }
         response.status(200).type("json").json(result);
