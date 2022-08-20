@@ -401,6 +401,7 @@ export default class AnimeApi {
                 console.error(`Unimplemented type ${entry.type}`);
                 return null;
             }
+            result.push(data);
           }
         }
         response.status(200).type("json").json(result);
