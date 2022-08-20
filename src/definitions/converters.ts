@@ -3,6 +3,7 @@
  */
 import { defineVerifiedChain } from "../utilities/sanitise";
 import { ACGEntry, AnimeEntry } from "./anime";
+import { MangaEntry } from "./manga";
 import {
   BilingualKeyedEntry,
   Category,
@@ -104,6 +105,17 @@ export function asAnimeEntry(table: any): AnimeEntry | null {
   return asACGEntry(table);
 }
 defineVerifiedChain(asAnimeEntry, asACGEntry);
+
+export function asMangaEntry(table: any): MangaEntry | null {
+  if (!asACGEntry(table)) {
+    return null;
+  }
+  if (typeof table.isFinished !== "boolean") {
+    return null;
+  }
+  return table;
+}
+defineVerifiedChain(asMangaEntry, asACGEntry, "isFinished");
 
 export function asCharacterPresence(table: any): CharacterPresence | null {
   if (typeof table !== "object") {

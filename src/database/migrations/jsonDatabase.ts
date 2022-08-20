@@ -3,6 +3,7 @@
  * database
  */
 
+import { asACGEntryInternal } from "../../definitions/acg.internal";
 import {
   AnimeEntryInternal,
   asAnimeEntryInternal,
@@ -36,7 +37,7 @@ import { DatabaseTypes, DatabaseTypesMapping } from "../database";
 //
 
 export const ANIME_TABLE_VERSION = 1;
-export const MANGA_TABLE_VERSION = 1;
+export const MANGA_TABLE_VERSION = 2;
 export const CATEGORY_TABLE_VERSION = 1;
 export const CHARACTER_TABLE_VERSION = 2;
 export const PERSON_TABLE_VERSION = 1;
@@ -76,10 +77,19 @@ export function queryDataValidityStatus(
     case "ANIME":
     case "CATEGORY":
     case "PERSON":
-    case "MANGA":
       return data.version === ANIME_TABLE_VERSION
         ? TABLE_COMPATIBILITY_STATE.OK
         : TABLE_COMPATIBILITY_STATE.INVALID;
+    case "MANGA": {
+      //MANGA table v2: added isFinished madatory field
+      if (data.version > CHARACTER_TABLE_VERSION) {
+        return TABLE_COMPATIBILITY_STATE.INVALID;
+      } else if (data.version == CHARACTER_TABLE_VERSION - 1) {
+        return TABLE_COMPATIBILITY_STATE.NEEDS_MIGRATION;
+      } else {
+        return TABLE_COMPATIBILITY_STATE.OK;
+      }
+    }
     case "CHARACTER": {
       //CHARACTER table v2: added the description mandatory field on it and changes the presence into an array
       if (data.version > CHARACTER_TABLE_VERSION) {
@@ -152,14 +162,28 @@ export function migrateAnimeTable(
 
 export function migrateMangaTable(
   data: NDJsonInfo
-): AnimeEntryInternal[] | null {
+): MangaEntryInternal[] | null {
   const status = queryDataValidityStatus(data, "MANGA");
   if (status === TABLE_COMPATIBILITY_STATE.INVALID) {
     return null;
   } else if (status === TABLE_COMPATIBILITY_STATE.OK) {
     return asArrayOf<MangaEntryInternal>(data.payload, asMangaEntryInternal);
   } else {
-    throw Error("Unimplemented"); //never happen for now
+    switch (data.version) {
+      case 1: {
+        //try to parse using the base implementation of acgentry
+        let original = asArrayOf(data.payload, asACGEntryInternal);
+        if (!original) {
+          throw new Error(
+            `Migration failed! Cannot parse the payload as MANGA v${data.version}`
+          );
+        }
+        return original.map((entry) => {
+          return { ...entry, isFinished: false };
+        });
+      }
+    }
+    throw new Error(`Unsupported version ${data.version}`);
   }
 }
 export function migrateCategoryTable(data: NDJsonInfo): Category[] | null {
@@ -181,43 +205,41 @@ export function migrateCharacterTable(data: NDJsonInfo): Character[] | null {
     return asArrayOf<Character>(data.payload, asCharacter);
   } else {
     switch (data.version) {
-      case 1:
-        {
-          //original implementation from the converter.ts and the core.d.ts
-          type _Character = BilingualKeyedEntry & {
-            gender: Gender;
-            presentOn: CharacterPresence;
-          };
-          function asCharacter_orig(table: any): _Character | null {
-            if (!asBilingualKeyEntry(table)) {
-              return null;
-            }
-            if (
-              typeof table.gender !== "string" ||
-              !asEnumeration<Gender>(table.gender, ["male", "female"])
-            ) {
-              return null;
-            }
-            if (!asCharacterPresence(table.presentOn)) {
-              return null;
-            }
-            return table;
+      case 1: {
+        //original implementation from the converter.ts and the core.d.ts
+        type _Character = BilingualKeyedEntry & {
+          gender: Gender;
+          presentOn: CharacterPresence;
+        };
+        function asCharacter_orig(table: any): _Character | null {
+          if (!asBilingualKeyEntry(table)) {
+            return null;
           }
-          //try to restore the original representation of the stuffs
-          let original = asArrayOf<_Character>(data.payload, asCharacter_orig);
-          if (!original) {
-            throw new Error(
-              `Migration failed! Cannot parse the payload as CHARACTER v${data.version}`
-            );
+          if (
+            typeof table.gender !== "string" ||
+            !asEnumeration<Gender>(table.gender, ["male", "female"])
+          ) {
+            return null;
           }
-          //map it into the new version of the stuffs
-          let return_value: Character[] = original.map((z) => {
-            // set the description to unknown and wrap the original presentOn in array
-            return { ...z, description: "<unknown>", presentOn: [z.presentOn] };
-          });
-          return return_value;
+          if (!asCharacterPresence(table.presentOn)) {
+            return null;
+          }
+          return table;
         }
-        break;
+        //try to restore the original representation of the stuffs
+        let original = asArrayOf<_Character>(data.payload, asCharacter_orig);
+        if (!original) {
+          throw new Error(
+            `Migration failed! Cannot parse the payload as CHARACTER v${data.version}`
+          );
+        }
+        //map it into the new version of the stuffs
+        let return_value: Character[] = original.map((z) => {
+          // set the description to unknown and wrap the original presentOn in array
+          return { ...z, description: "<unknown>", presentOn: [z.presentOn] };
+        });
+        return return_value;
+      }
     }
     throw new Error(`Unsupported version ${data.version}`);
   }

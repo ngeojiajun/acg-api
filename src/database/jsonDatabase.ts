@@ -121,7 +121,7 @@ export default class JsonDatabase implements IDatabase {
       case "MANGA":
         return this.#addDataInternal<"MANGA", MangaEntryInternal>(
           type,
-          data as AnimeEntryInternal,
+          data as MangaEntryInternal,
           this.#getEqualityConditionForType("MANGA"),
           asMangaEntryInternal,
           checkRemoteReferencesMangaEntry
