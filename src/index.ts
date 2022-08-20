@@ -9,6 +9,7 @@ import AdminApi from "./api/admin";
 import AnimeApi from "./api/anime";
 import CharacterApi from "./api/characters";
 import { errorHandler } from "./api/commonUtils";
+import MangaApi from "./api/manga";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import { LoginRoute } from "./authentication/routes";
 import JsonDatabase from "./database/jsonDatabase";
@@ -48,6 +49,7 @@ app.use(apiLimiter);
 app.use(express.json());
 
 app.use("/anime", new AnimeApi(db).asApplication());
+app.use("/manga", new MangaApi(db).asApplication());
 app.use("/character", new CharacterApi(db).asApplication());
 
 app.get("/", (_req: Request, res: Response): void => {
