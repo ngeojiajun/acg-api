@@ -39,6 +39,7 @@ import {
 import {
   checkRemoteReferencesAnimeEntry,
   checkRemoteReferencesCharacter,
+  checkRemoteReferencesMangaEntry,
   constructStatus,
 } from "./integrityTestUtils";
 import "../utilities/prototype_patch_def";
@@ -47,6 +48,7 @@ import {
   CATEGORY_TABLE_VERSION,
   CHARACTER_TABLE_VERSION,
   getMaximumSupportedVersion,
+  MANGA_TABLE_VERSION,
   migrate,
   PERSON_TABLE_VERSION,
   queryDataValidityStatus,
@@ -61,6 +63,11 @@ import {
   ERROR_PATCH_FAILED,
 } from "./error_codes";
 import { existsSync } from "fs";
+import {
+  asMangaEntryInternal,
+  MangaEntryInternal,
+} from "../definitions/manga.internal";
+import { ACGEntryInternal } from "../definitions/acg.internal";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -70,6 +77,7 @@ type InternalParsedMap = {
    * the anime table
    */
   anime?: Cached<AnimeEntryInternal>;
+  manga?: Cached<MangaEntryInternal>;
   /**
    * The person table - this is unrelated to the characters in animes
    */
@@ -106,29 +114,30 @@ export default class JsonDatabase implements IDatabase {
         return this.#addDataInternal<"ANIME", AnimeEntryInternal>(
           type,
           data as AnimeEntryInternal,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("ANIME"),
           asAnimeEntryInternal,
           checkRemoteReferencesAnimeEntry
+        );
+      case "MANGA":
+        return this.#addDataInternal<"MANGA", MangaEntryInternal>(
+          type,
+          data as AnimeEntryInternal,
+          this.#getEqualityConditionForType("MANGA"),
+          asMangaEntryInternal,
+          checkRemoteReferencesMangaEntry
         );
       case "CATEGORY":
         return this.#addDataInternal<"CATEGORY", Category>(
           type,
           data,
-          [{ key: "name", op: "EQUALS_INSENSITIVE" }],
+          this.#getEqualityConditionForType("CATEGORY"),
           asCategory
         );
       case "CHARACTER":
         return this.#addDataInternal<"CHARACTER", Character>(
           type,
           data as Character,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-            { key: "gender", op: "EQUALS" },
-          ],
+          this.#getEqualityConditionForType("CHARACTER"),
           asCharacter,
           checkRemoteReferencesCharacter
         );
@@ -136,10 +145,7 @@ export default class JsonDatabase implements IDatabase {
         return this.#addDataInternal<"PERSON", People>(
           type,
           data as People,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("PERSON"),
           asPeople
         );
     }
@@ -157,13 +163,21 @@ export default class JsonDatabase implements IDatabase {
           "ANIME",
           id,
           delta,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("ANIME"),
           this.#database.anime!,
           asAnimeEntryInternal,
           checkRemoteReferencesAnimeEntry
+        );
+      }
+      case "MANGA": {
+        return this.#updateDataInternal(
+          "MANGA",
+          id,
+          delta,
+          this.#getEqualityConditionForType("MANGA"),
+          this.#database.manga!,
+          asMangaEntryInternal,
+          checkRemoteReferencesMangaEntry
         );
       }
       case "CHARACTER": {
@@ -171,11 +185,7 @@ export default class JsonDatabase implements IDatabase {
           "CHARACTER",
           id,
           delta,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-            { key: "gender", op: "EQUALS" },
-          ],
+          this.#getEqualityConditionForType("CHARACTER"),
           this.#database.characters!,
           asCharacter,
           checkRemoteReferencesCharacter
@@ -186,10 +196,7 @@ export default class JsonDatabase implements IDatabase {
           "PERSON",
           id,
           delta,
-          [
-            { key: "name", op: "EQUALS_INSENSITIVE" },
-            { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
-          ],
+          this.#getEqualityConditionForType("PERSON"),
           this.#database.person!,
           asPeople
         );
@@ -199,7 +206,7 @@ export default class JsonDatabase implements IDatabase {
           "CATEGORY",
           id,
           delta,
-          [{ key: "name", op: "EQUALS_INSENSITIVE" }],
+          this.#getEqualityConditionForType("CATEGORY"),
           this.#database.categories!,
           asCategory
         );
@@ -312,6 +319,10 @@ export default class JsonDatabase implements IDatabase {
       await this.#loadAndRegister(
         path.join(this.directory, "animes.ndjson"),
         "ANIME"
+      );
+      await this.#loadAndRegister(
+        path.join(this.directory, "mangas.ndjson"),
+        "MANGA"
       );
       await this.#loadAndRegister(
         path.join(this.directory, "persons.ndjson"),
@@ -543,7 +554,7 @@ export default class JsonDatabase implements IDatabase {
                 throw new Error("Cannot eval null");
               }
               let _condition = condition as Condition<dataType, "EVAL_JS">;
-              let result = _condition.rhs?.(lhs);
+              let result = _condition.rhs?.(lhs, another?.[condition.key]);
               if (!result && chaining === "AND") {
                 return false;
               } else if (result && chaining === "OR") {
@@ -583,14 +594,17 @@ export default class JsonDatabase implements IDatabase {
     const mutex_release = await this.#mutex.tryLock();
     try {
       switch (type) {
-        case "ANIME": {
+        case "ANIME":
+        //HACK: the code is placed here just as a hack as the the code is put as the checking for both MANGA
+        //ANIME tables are so similar
+        case "MANGA": {
           let iterator = this.iterateKeysIf<"CHARACTER">("CHARACTER", null, [
             {
               key: "presentOn",
               op: "EVAL_JS", //note that EVAL_JS has very high performance penalty so use with care
               rhs: (entries: CharacterPresence[]) => {
                 for (const entry of entries) {
-                  if (entry.type !== "anime") {
+                  if (entry.type !== type.toLowerCase()) {
                     continue;
                   }
                   if (entry.id === id) {
@@ -620,20 +634,28 @@ export default class JsonDatabase implements IDatabase {
           }
         }
         case "CATEGORY": {
-          let iterator = this.iterateKeysIf<"ANIME">("ANIME", null, [
-            {
-              key: "category",
-              op: "INCLUDES_SET",
-              rhs: [id],
-            },
-          ]);
-          if (!(await iterator.next()).done) {
-            iterator.next(true);
-            return constructStatus(
-              false,
-              "Cannot delete the entry because it is referenced by entry in ANIME",
-              ERROR_HAVING_REMOTE_DEPENCENCIES
+          const types: DatabaseTypes[] = ["ANIME", "MANGA"];
+          for (const type of types) {
+            //the typing is made wide here because the possible mutation of the value is known
+            let iterator = this.iterateKeysIf<DatabaseTypes, ACGEntryInternal>(
+              type,
+              null,
+              [
+                {
+                  key: "category",
+                  op: "INCLUDES_SET",
+                  rhs: [id],
+                },
+              ]
             );
+            if (!(await iterator.next()).done) {
+              iterator.next(true);
+              return constructStatus(
+                false,
+                "Cannot delete the entry because it is referenced by entry in ANIME",
+                ERROR_HAVING_REMOTE_DEPENCENCIES
+              );
+            }
           }
           if (!removeEntryById(table, id)) {
             return constructStatus(
@@ -646,30 +668,34 @@ export default class JsonDatabase implements IDatabase {
           }
         }
         case "PERSON": {
-          let iterator = this.iterateKeysIf<"ANIME">(
-            "ANIME",
-            null,
-            [
-              {
-                key: "publisher",
-                op: "INCLUDES_SET",
-                rhs: [id],
-              },
-              {
-                key: "author",
-                op: "INCLUDES_SET",
-                rhs: [id],
-              },
-            ],
-            "OR"
-          );
-          if (!(await iterator.next()).done) {
-            iterator.next(true);
-            return constructStatus(
-              false,
-              "Cannot delete the entry because it is referenced by entry in ANIME",
-              ERROR_HAVING_REMOTE_DEPENCENCIES
+          const types: DatabaseTypes[] = ["ANIME", "MANGA"];
+          for (const type of types) {
+            //the typing is made wide here because the possible mutation of the value is known
+            let iterator = this.iterateKeysIf<DatabaseTypes, ACGEntryInternal>(
+              type,
+              null,
+              [
+                {
+                  key: "publisher",
+                  op: "INCLUDES_SET",
+                  rhs: [id],
+                },
+                {
+                  key: "author",
+                  op: "INCLUDES_SET",
+                  rhs: [id],
+                },
+              ],
+              "OR"
             );
+            if (!(await iterator.next()).done) {
+              iterator.next(true);
+              return constructStatus(
+                false,
+                "Cannot delete the entry because it is referenced by entry in ANIME",
+                ERROR_HAVING_REMOTE_DEPENCENCIES
+              );
+            }
           }
           if (!removeEntryById(table, id)) {
             return constructStatus(
@@ -715,6 +741,15 @@ export default class JsonDatabase implements IDatabase {
           ANIME_TABLE_VERSION
         );
         this.#database.anime.mutated = false;
+      }
+      if (this.#database.manga && this.#database.manga.mutated) {
+        console.log("Saving MANGA table.....");
+        await this.#saveTable(
+          this.#database.manga.entries,
+          "mangas.ndjson",
+          MANGA_TABLE_VERSION
+        );
+        this.#database.manga.mutated = false;
       }
       if (this.#database.characters && this.#database.characters.mutated) {
         console.log("Saving CHARACTER table.....");
@@ -815,7 +850,8 @@ export default class JsonDatabase implements IDatabase {
           payload: [],
           version: getMaximumSupportedVersion(type),
         },
-        type
+        type,
+        true
       );
       return;
     }
@@ -823,6 +859,58 @@ export default class JsonDatabase implements IDatabase {
     let data: NDJsonInfo = await parseNDJson(filename);
     //load it into the database
     this.#validateTable(data, type);
+  }
+  #getEqualityConditionForType<T extends DatabaseTypes>(
+    type: T
+  ): Condition<DatabaseTypesMapping[T]>[] {
+    switch (type) {
+      case "ANIME":
+      case "MANGA":
+        return [
+          { key: "name", op: "EQUALS_INSENSITIVE" },
+          { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+        ] as any;
+      case "CHARACTER": {
+        return [
+          { key: "name", op: "EQUALS_INSENSITIVE" },
+          { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+          { key: "gender", op: "EQUALS" },
+          {
+            key: "presentOn",
+            op: "EVAL_JS",
+            rhs: (
+              lhs: CharacterPresence[],
+              rhs: CharacterPresence[]
+            ): boolean => {
+              //the presentOn contains the array of object which cannot be easily compared in JS
+              //the only way to perform the comparism is to perform the check is checking its props
+              //manually
+              for (const entryRhs of rhs) {
+                for (const entryLhs of lhs) {
+                  if (
+                    entryRhs.id === entryLhs.id &&
+                    entryRhs.type === entryLhs.type
+                  ) {
+                    return true;
+                  }
+                }
+              }
+              return false;
+            },
+          },
+        ] as Condition<any>[];
+      }
+      case "PERSON": {
+        return [
+          { key: "name", op: "EQUALS_INSENSITIVE" },
+          { key: "nameInJapanese", op: "EQUALS_INSENSITIVE" },
+        ] as any;
+      }
+      case "CATEGORY": {
+        return [{ key: "name", op: "EQUALS_INSENSITIVE" }];
+      }
+    }
+    throw new Error("Unimplemented types");
   }
   /**
    * Internal use only: get the internal table
@@ -835,6 +923,11 @@ export default class JsonDatabase implements IDatabase {
           return null;
         }
         return this.#database.anime;
+      case "MANGA":
+        if (!this.#database.manga) {
+          return null;
+        }
+        return this.#database.manga;
       case "PERSON":
         if (!this.#database.person) {
           return null;
@@ -856,8 +949,13 @@ export default class JsonDatabase implements IDatabase {
    * Validate and register the data as compatible with certain schema
    * @param table the table data
    * @param validate_as the target database to register to
+   * @param new_table whether the table provided is a entirely new table
    */
-  #validateTable(table: NDJsonInfo, validate_as: DatabaseTypes) {
+  #validateTable(
+    table: NDJsonInfo,
+    validate_as: DatabaseTypes,
+    new_table: boolean = false
+  ) {
     console.log(
       `JSONDatabase: registering table ${validate_as} with schema version ${table.version}`
     );
@@ -883,23 +981,29 @@ export default class JsonDatabase implements IDatabase {
       switch (validate_as) {
         case "ANIME":
           console.log(`Migrated to version ${ANIME_TABLE_VERSION}`);
-          this.#database.anime = makeCached(parsed as AnimeEntryInternal[]);
-          this.#database.anime.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.anime = makeCached(
+            parsed as AnimeEntryInternal[],
+            true
+          );
+          break;
+        case "MANGA":
+          console.log(`Migrated to version ${MANGA_TABLE_VERSION}`);
+          this.#database.manga = makeCached(
+            parsed as MangaEntryInternal[],
+            true
+          );
           break;
         case "CATEGORY":
           console.log(`Migrated to version ${CATEGORY_TABLE_VERSION}`);
-          this.#database.categories = makeCached(parsed as Category[]);
-          this.#database.categories.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.categories = makeCached(parsed as Category[], true);
           break;
         case "CHARACTER":
           console.log(`Migrated to version ${CHARACTER_TABLE_VERSION}`);
-          this.#database.characters = makeCached(parsed as Character[]);
-          this.#database.characters.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.characters = makeCached(parsed as Character[], true);
           break;
         case "PERSON":
           console.log(`Migrated to version ${PERSON_TABLE_VERSION}`);
-          this.#database.person = makeCached(parsed as People[]);
-          this.#database.person.mutated = true; //mark this as dirty to force the database engine to write it
+          this.#database.person = makeCached(parsed as People[], true);
           break;
       }
       return;
@@ -915,7 +1019,20 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.anime = makeCached(parsed);
+          this.#database.anime = makeCached(parsed, new_table);
+        }
+        break;
+      case "MANGA":
+        {
+          let parsed: MangaEntryInternal[] | null =
+            asArrayOf<MangaEntryInternal>(table.payload, asMangaEntryInternal);
+          if (!parsed) {
+            throw new Error(
+              `JSONDatabase: detected schema violation when parsing table for inclusion into MANGA`
+            );
+          }
+          //construct the stuffs
+          this.#database.manga = makeCached(parsed, new_table);
         }
         break;
       case "PERSON":
@@ -930,7 +1047,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.person = makeCached(parsed);
+          this.#database.person = makeCached(parsed, new_table);
         }
         break;
       case "CHARACTER":
@@ -945,7 +1062,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.characters = makeCached(parsed);
+          this.#database.characters = makeCached(parsed, new_table);
         }
         break;
       case "CATEGORY":
@@ -960,7 +1077,7 @@ export default class JsonDatabase implements IDatabase {
             );
           }
           //construct the stuffs
-          this.#database.categories = makeCached(parsed);
+          this.#database.categories = makeCached(parsed, new_table);
         }
         break;
     }

@@ -35,10 +35,10 @@ export async function CachedTests() {
   //make a duplicated entry at the end
   const invalid = [...data, data[0]];
   await assertThrow(() => {
-    makeCached(invalid);
+    makeCached(invalid, false);
   }, "makeCached with duplicate");
   console.log("Find entry from Cached should return reference to the object");
-  let table = makeCached(data);
+  let table = makeCached(data, false);
   assertMatch(findEntry(table, 2), data[1]);
   console.log("Add entry should add the copy of data into it");
   const toAdd: Example = {

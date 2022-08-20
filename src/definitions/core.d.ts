@@ -28,7 +28,7 @@ export declare type People = BilingualKeyedEntry;
 export declare type Gender = "male" | "female";
 export declare type CharacterPresence = {
   id: number;
-  type: "anime" | "game" | "comic";
+  type: "anime" | "game" | "manga";
 };
 
 export declare type Character = BilingualKeyedEntry & {
