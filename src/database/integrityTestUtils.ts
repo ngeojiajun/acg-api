@@ -4,6 +4,7 @@
 
 import { AnimeEntryInternal } from "../definitions/anime.internal";
 import { Character, People, Status } from "../definitions/core";
+import { MangaEntryInternal } from "../definitions/manga.internal";
 import { IDatabase } from "./database";
 import { ERROR_INTEGRITY_TEST_FAILED } from "./error_codes";
 
@@ -91,7 +92,7 @@ export async function checkRemoteReferencesCharacter(
         break;
       case "manga":
         {
-          let data: AnimeEntryInternal | null = await db.getData(
+          let data: MangaEntryInternal | null = await db.getData(
             "MANGA",
             presence.id
           );
