@@ -124,7 +124,7 @@ export function asCharacterPresence(table: any): CharacterPresence | null {
   if (typeof table.id !== "number") {
     return null;
   }
-  if (!asEnumeration(table.type, ["anime", "game", "comic"])) {
+  if (!asEnumeration(table.type, ["anime", "game", "manga"])) {
     return null;
   }
   return table as CharacterPresence;
