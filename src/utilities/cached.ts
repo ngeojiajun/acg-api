@@ -91,6 +91,28 @@ export function addEntry<T extends KeyedEntry>(
 }
 
 /**
+ * Internal API: adjust all indexes after the removal
+ * @param table the table
+ * @param id the original index of the removed entry
+ */
+function recalculateIndexes<T extends KeyedEntry>(
+  table: Cached<T>,
+  id: number
+): Cached<T>["cache"] {
+  let ret = { ...table.cache };
+  for (const key of Object.keys(ret)) {
+    const keyId = parseInt(key);
+    if (keyId === id) {
+      delete ret[keyId];
+    } else if (keyId > id) {
+      //adjust them back but substract it by one
+      ret[keyId]--;
+    }
+  }
+  return ret;
+}
+
+/**
  * Remove an entry from the table
  * @param table
  * @param id
@@ -103,10 +125,10 @@ export function removeEntryById<T extends KeyedEntry>(
   let { cache, entries } = table;
   let index = cache[id];
   if (index !== undefined) {
-    //nuke the cache
-    table.cache = {};
     //use the index to remove the stuffs
     entries.splice(index, 1);
+    //update the cache table
+    table.cache = recalculateIndexes(table, index);
     table.mutated = true;
     return true;
   }
@@ -114,8 +136,8 @@ export function removeEntryById<T extends KeyedEntry>(
     if (entries[i].id === id) {
       entries.splice(i, 1);
       table.mutated = true;
-      //nuke the cache
-      table.cache = {};
+      //update the cache table
+      table.cache = recalculateIndexes(table, index);
       return true;
     }
   }
