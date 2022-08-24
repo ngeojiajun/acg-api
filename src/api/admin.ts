@@ -19,7 +19,7 @@ import {
 } from "../definitions/manga.internal";
 import { doesPatchEffects, propsPersent } from "../utilities/sanitise";
 import { tryParseInteger } from "../utils";
-import { errorHandler, nonExistantRoute } from "./commonUtils";
+import { errorHandler, neverCache, nonExistantRoute } from "./commonUtils";
 
 /**
  * Contain routes for the administration use
@@ -36,6 +36,8 @@ export default class AdminApi {
     app.disable("x-powered-by");
     if (this.#authProvider.canPerformAuth() && !process.env.DISABLE_ADMIN) {
       app.use(ProtectedRoute(this.#authProvider));
+      //the manipulation commands must not be cached
+      app.use(neverCache);
       app.post("/anime", this.addAnimeEntry.bind(this));
       app.post("/manga", this.addMangaEntry.bind(this));
       app.post("/person", this.addPeopleEntry.bind(this));
