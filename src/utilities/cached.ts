@@ -1,4 +1,5 @@
 import { KeyedEntry } from "../definitions/core";
+import { computeHashForObject } from "./hashing";
 
 /**
  * Cached - A simple caching system which storing the id:index mapped at another array along side with the main array
@@ -18,6 +19,12 @@ export type Cached<T extends KeyedEntry> = {
    * Is it is mutated
    */
   mutated: boolean;
+  /**
+   * Object which hold the hashes for the ids
+   */
+  hashes: {
+    [key: KeyedEntry["id"]]: string;
+  };
 };
 
 /**
@@ -38,6 +45,7 @@ export function makeCached<T extends KeyedEntry>(
     mutated: fresh,
     entries: values,
     cache: {},
+    hashes: {},
   };
 }
 
@@ -51,7 +59,7 @@ export function findEntry<T extends KeyedEntry>(
   object: Cached<T>,
   id: KeyedEntry["id"]
 ): T | null {
-  let { cache, entries } = object;
+  let { cache, entries, hashes } = object;
   let index = cache[id];
   if (index !== undefined) {
     return entries[index];
@@ -59,6 +67,7 @@ export function findEntry<T extends KeyedEntry>(
   for (let i = 0; i < entries.length; i++) {
     if (entries[i].id === id) {
       cache[id] = i;
+      hashes[id] = computeHashForObject(entries[i]);
       return entries[i];
     }
   }
@@ -87,6 +96,8 @@ export function addEntry<T extends KeyedEntry>(
   //finally push this
   let tableIdx = table.entries.push(copy) - 1;
   table.cache[id] = tableIdx;
+  //with its hash along
+  table.hashes[id] = computeHashForObject(copy);
   return id;
 }
 
@@ -122,7 +133,9 @@ export function removeEntryById<T extends KeyedEntry>(
   table: Cached<T>,
   id: KeyedEntry["id"]
 ): boolean {
-  let { cache, entries } = table;
+  let { cache, entries, hashes } = table;
+  //nuke of the hashes
+  delete hashes[id];
   let index = cache[id];
   if (index !== undefined) {
     //use the index to remove the stuffs
@@ -142,4 +155,35 @@ export function removeEntryById<T extends KeyedEntry>(
     }
   }
   return false;
+}
+
+/**
+ * Ask the engine to drop the hash cache for the certain entry identified by its id
+ * @param table Table which the entry resides
+ * @param id the id of the entry for its hashes cache to be nuked
+ */
+export function dropHashesOf<T extends KeyedEntry>(
+  table: Cached<T>,
+  id: KeyedEntry["id"]
+): void {
+  delete table.hashes[id];
+}
+
+/**
+ * Obtain (or compute if not present) the cache of the entry identified by its id
+ * @param table Table which the entry resides
+ * @param id the id of the entry which its hash should be obtained
+ * @returns the hash or null if it is not exist
+ */
+export function getHashOf<T extends KeyedEntry>(
+  table: Cached<T>,
+  id: KeyedEntry["id"]
+): string | null {
+  if (table.hashes[id]) {
+    return table.hashes[id];
+  }
+  if (!findEntry(table, id)) {
+    return null;
+  }
+  return table.hashes[id];
 }
