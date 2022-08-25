@@ -13,6 +13,10 @@ import {
 } from "../definitions/anime.internal";
 import { asCategory, asCharacter, asPeople } from "../definitions/converters";
 import { People, Status, Character, Category } from "../definitions/core";
+import {
+  asMangaEntryInternal,
+  MangaEntryInternal,
+} from "../definitions/manga.internal";
 import { doesPatchEffects, propsPersent } from "../utilities/sanitise";
 import { tryParseInteger } from "../utils";
 import { errorHandler, nonExistantRoute } from "./commonUtils";
@@ -33,14 +37,17 @@ export default class AdminApi {
     if (this.#authProvider.canPerformAuth() && !process.env.DISABLE_ADMIN) {
       app.use(ProtectedRoute(this.#authProvider));
       app.post("/anime", this.addAnimeEntry.bind(this));
+      app.post("/manga", this.addMangaEntry.bind(this));
       app.post("/person", this.addPeopleEntry.bind(this));
       app.post("/character", this.addCharacterEntry.bind(this));
       app.post("/category", this.addCategoryEntry.bind(this));
       app.patch("/anime/:id", this.updateAnimeEntry.bind(this));
+      app.patch("/manga/:id", this.updateMangaEntry.bind(this));
       app.patch("/character/:id", this.updateCharacterEntry.bind(this));
       app.patch("/person/:id", this.updatePersonEntry.bind(this));
       app.patch("/category/:id", this.updateCategoryEntry.bind(this));
       app.delete("/anime/:id", this.#deleteEntry.bind(this, "ANIME"));
+      app.delete("/manga/:id", this.#deleteEntry.bind(this, "MANGA"));
       app.delete("/character/:id", this.#deleteEntry.bind(this, "CHARACTER"));
       app.delete("/person/:id", this.#deleteEntry.bind(this, "PERSON"));
       app.delete("/category/:id", this.#deleteEntry.bind(this, "CATEGORY"));
@@ -129,6 +136,101 @@ export default class AdminApi {
       }
       let status: Status = await this.#database.updateData(
         "ANIME",
+        id,
+        request.body
+      );
+      if (!status.success) {
+        if (status.code === ERROR_ENTRY_NOT_FOUND) {
+          response.status(404).json({ error: "Entry not found" }).end();
+          return;
+        } else if (status.code === ERROR_INTEGRITY_TEST_FAILED) {
+          response.status(409).json({ error: status.message }).end();
+          return;
+        } else {
+          this.#send400(response);
+          return;
+        }
+      } else {
+        response.status(201).json({ id }).end();
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  /**
+   * Add manga body in body
+   * @route /manga POST
+   */
+  async addMangaEntry(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      if (!request.body) {
+        this.#send400(response);
+        return;
+      }
+      //lets make a quick test on the request
+      if (
+        !propsPersent(request.body, asMangaEntryInternal, [
+          "id",
+          "category",
+          "author",
+          "publisher",
+          "isFinished",
+        ])
+      ) {
+        //the required stuffs are missing, it wll definitely failed the conversion
+        this.#send400(response);
+        return;
+      }
+      //patch the request body so it is convertable by the original converter
+      request.body.id = 0;
+      let body: MangaEntryInternal | null = asMangaEntryInternal(request.body);
+      if (!body) {
+        this.#send400(response);
+        return;
+      }
+      let result: Status = await this.#database.addData("MANGA", body);
+      if (!result.success) {
+        response.status(409).json({ error: result.message });
+      } else {
+        response.status(201).json({ id: result.message });
+      }
+    } catch (e) {
+      next(e);
+    }
+  }
+  /**
+   * update manga body in body
+   * @route /manga/:id PATCH
+   */
+  async updateMangaEntry(
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    try {
+      //first try to validate the request body
+      if (!request.body) {
+        this.#send400(response);
+        return;
+      }
+      const id = tryParseInteger(request.params.id);
+      //check the id itself
+      if (!id) {
+        response.status(404).json({ error: "Entry not found" }).end();
+        return;
+      }
+      //check the patch and ensure it is valid
+      if (!doesPatchEffects(request.body, asMangaEntryInternal, ["id"])) {
+        //the body is valid but the it brings no effect when applied to the internal object
+        this.#send400(response);
+        return;
+      }
+      let status: Status = await this.#database.updateData(
+        "MANGA",
         id,
         request.body
       );
