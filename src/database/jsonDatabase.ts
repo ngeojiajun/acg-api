@@ -21,6 +21,7 @@ import {
   addEntry,
   Cached,
   findEntry,
+  getHashOf,
   makeCached,
   removeEntryById,
 } from "../utilities/cached";
@@ -336,6 +337,18 @@ export default class JsonDatabase implements IDatabase {
         path.join(this.directory, "categories.ndjson"),
         "CATEGORY"
       );
+    } finally {
+      mutex_release();
+    }
+  }
+  async getHash(type: DatabaseTypes, id: number): Promise<string | null> {
+    const mutex_release = await this.#mutex.tryLockRead();
+    try {
+      let data: Cached<KeyedEntry> | null = this.#getTable(type);
+      if (!data) {
+        throw new Error("Fatal error: table not registered yet. bug?");
+      }
+      return getHashOf(data, id);
     } finally {
       mutex_release();
     }

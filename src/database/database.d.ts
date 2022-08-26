@@ -127,6 +127,12 @@ export declare interface IDatabase {
     data: DatabaseTypesMapping[T]
   ) => Promise<Status>;
   /**
+   * Get the hash for the entry id
+   * @param type the type of the table which the entry should be searched for
+   * @param id id of the entry
+   */
+  getHash(type: DatabaseTypes, id: KeyedEntry["id"]): Promise<string | null>;
+  /**
    * Update the data with id=`id` with the delta provided
    * @param type the table to which the data is pushed into
    * @param id the id of the entry with the patch will be applied against
