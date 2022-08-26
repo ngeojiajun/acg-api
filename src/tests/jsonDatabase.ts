@@ -3,9 +3,10 @@ import { DatabaseTypes, IDatabase } from "../database/database";
 import JsonDatabase from "../database/jsonDatabase";
 import { AnimeEntryInternal } from "../definitions/anime.internal";
 import { Category, Character, People } from "../definitions/core";
-import { assertFail, assertSuccess } from "./common_utils";
+import { assertFail, assertMatch, assertSuccess } from "./common_utils";
 import "../utilities/prototype_patch";
 import { MangaEntryInternal } from "../definitions/manga.internal";
+import { computeHashForObject } from "../utilities/hashing";
 
 const testCategory1: Category = {
   id: 1,
@@ -106,10 +107,30 @@ export async function JsonDatabaseTests(_temp: PathLike) {
     testManga1.name = "12334";
     console.log("Adding another row");
     assertSuccess(await database.addData("PERSON", testPerson));
+    assertMatch(
+      await database.getHash("PERSON", 2),
+      computeHashForObject({ ...testPerson, id: 2 })
+    );
     assertSuccess(await database.addData("CATEGORY", testCategory1));
+    assertMatch(
+      await database.getHash("CATEGORY", 2),
+      computeHashForObject({ ...testCategory1, id: 2 })
+    );
     assertSuccess(await database.addData("ANIME", testAnime1));
+    assertMatch(
+      await database.getHash("ANIME", 2),
+      computeHashForObject({ ...testAnime1, id: 2 })
+    );
     assertSuccess(await database.addData("MANGA", testManga1));
+    assertMatch(
+      await database.getHash("MANGA", 2),
+      computeHashForObject({ ...testManga1, id: 2 })
+    );
     assertSuccess(await database.addData("CHARACTER", testCharacter));
+    assertMatch(
+      await database.getHash("CHARACTER", 2),
+      computeHashForObject({ ...testCharacter, id: 2 })
+    );
     console.log("Testing illegal operations: updateData");
     //undoing the changes
     testAnime1.name = "chicken";

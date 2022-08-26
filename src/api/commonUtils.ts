@@ -25,3 +25,13 @@ export function errorHandler(
     response.status(500).json({ error: "Internal error happened" }).end();
   }
 }
+
+export function neverCache(
+  _resquest: Request,
+  response: Response,
+  next: NextFunction
+) {
+  //dont store the response at all
+  response.setHeader("Cache-Control", "no-store");
+  next();
+}
