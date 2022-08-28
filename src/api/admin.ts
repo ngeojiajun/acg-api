@@ -19,7 +19,12 @@ import {
 } from "../definitions/manga.internal";
 import { doesPatchEffects, propsPersent } from "../utilities/sanitise";
 import { tryParseInteger } from "../utils";
-import { errorHandler, neverCache, nonExistantRoute } from "./commonUtils";
+import {
+  enforceEntryVersion,
+  errorHandler,
+  neverCache,
+  nonExistantRoute,
+} from "./commonUtils";
 
 /**
  * Contain routes for the administration use
@@ -43,16 +48,56 @@ export default class AdminApi {
       app.post("/person", this.addPeopleEntry.bind(this));
       app.post("/character", this.addCharacterEntry.bind(this));
       app.post("/category", this.addCategoryEntry.bind(this));
-      app.patch("/anime/:id", this.updateAnimeEntry.bind(this));
-      app.patch("/manga/:id", this.updateMangaEntry.bind(this));
-      app.patch("/character/:id", this.updateCharacterEntry.bind(this));
-      app.patch("/person/:id", this.updatePersonEntry.bind(this));
-      app.patch("/category/:id", this.updateCategoryEntry.bind(this));
-      app.delete("/anime/:id", this.#deleteEntry.bind(this, "ANIME"));
-      app.delete("/manga/:id", this.#deleteEntry.bind(this, "MANGA"));
-      app.delete("/character/:id", this.#deleteEntry.bind(this, "CHARACTER"));
-      app.delete("/person/:id", this.#deleteEntry.bind(this, "PERSON"));
-      app.delete("/category/:id", this.#deleteEntry.bind(this, "CATEGORY"));
+      app.patch(
+        "/anime/:id",
+        this.#ifMatch.bind(this, "ANIME"),
+        this.updateAnimeEntry.bind(this)
+      );
+      app.patch(
+        "/manga/:id",
+        this.#ifMatch.bind(this, "MANGA"),
+        this.updateMangaEntry.bind(this)
+      );
+      app.patch(
+        "/character/:id",
+        this.#ifMatch.bind(this, "CHARACTER"),
+        this.updateCharacterEntry.bind(this)
+      );
+      app.patch(
+        "/person/:id",
+        this.#ifMatch.bind(this, "PERSON"),
+        this.updatePersonEntry.bind(this)
+      );
+      app.patch(
+        "/category/:id",
+        this.#ifMatch.bind(this, "CATEGORY"),
+        this.updateCategoryEntry.bind(this)
+      );
+      app.delete(
+        "/anime/:id",
+        this.#ifMatch.bind(this, "ANIME"),
+        this.#deleteEntry.bind(this, "ANIME")
+      );
+      app.delete(
+        "/manga/:id",
+        this.#ifMatch.bind(this, "MANGA"),
+        this.#deleteEntry.bind(this, "MANGA")
+      );
+      app.delete(
+        "/character/:id",
+        this.#ifMatch.bind(this, "CHARACTER"),
+        this.#deleteEntry.bind(this, "CHARACTER")
+      );
+      app.delete(
+        "/person/:id",
+        this.#ifMatch.bind(this, "PERSON"),
+        this.#deleteEntry.bind(this, "PERSON")
+      );
+      app.delete(
+        "/category/:id",
+        this.#ifMatch.bind(this, "CATEGORY"),
+        this.#deleteEntry.bind(this, "CATEGORY")
+      );
       app.use(errorHandler);
     } else {
       console.warn(
@@ -64,6 +109,17 @@ export default class AdminApi {
     }
     app.use(nonExistantRoute);
     return app;
+  }
+  /**
+   * Quick alias for enforceEntryVersion
+   */
+  #ifMatch(
+    table: DatabaseTypes,
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    enforceEntryVersion(this.#database, table, request, response, next);
   }
   /**
    * Add anime body in body
@@ -103,7 +159,10 @@ export default class AdminApi {
       if (!result.success) {
         response.status(409).json({ error: result.message });
       } else {
-        response.status(201).json({ id: result.message });
+        response.status(201).json({
+          id: result.message,
+          hash: await this.#database.getHash("ANIME", result.message),
+        });
       }
     } catch (e) {
       next(e);
@@ -153,7 +212,13 @@ export default class AdminApi {
           return;
         }
       } else {
-        response.status(201).json({ id }).end();
+        response
+          .status(201)
+          .json({
+            id,
+            hash: await this.#database.getHash("ANIME", id),
+          })
+          .end();
       }
     } catch (e) {
       next(e);
@@ -198,7 +263,10 @@ export default class AdminApi {
       if (!result.success) {
         response.status(409).json({ error: result.message });
       } else {
-        response.status(201).json({ id: result.message });
+        response.status(201).json({
+          id: result.message,
+          hash: await this.#database.getHash("MANGA", result.message),
+        });
       }
     } catch (e) {
       next(e);
@@ -248,7 +316,13 @@ export default class AdminApi {
           return;
         }
       } else {
-        response.status(201).json({ id }).end();
+        response
+          .status(201)
+          .json({
+            id,
+            hash: await this.#database.getHash("MANGA", id),
+          })
+          .end();
       }
     } catch (e) {
       next(e);
@@ -285,7 +359,10 @@ export default class AdminApi {
       if (!result.success) {
         response.status(409).json({ error: result.message });
       } else {
-        response.status(201).json({ id: result.message });
+        response.status(201).json({
+          id: result.message,
+          hash: await this.#database.getHash("PERSON", result.message),
+        });
       }
     } catch (e) {
       next(e);
@@ -335,7 +412,13 @@ export default class AdminApi {
           return;
         }
       } else {
-        response.status(201).json({ id }).end();
+        response
+          .status(201)
+          .json({
+            id,
+            hash: await this.#database.getHash("PERSON", id),
+          })
+          .end();
       }
     } catch (e) {
       next(e);
@@ -372,7 +455,10 @@ export default class AdminApi {
       if (!result.success) {
         response.status(409).json({ error: result.message });
       } else {
-        response.status(201).json({ id: result.message });
+        response.status(201).json({
+          id: result.message,
+          hash: await this.#database.getHash("CHARACTER", result.message),
+        });
       }
     } catch (e) {
       next(e);
@@ -422,7 +508,13 @@ export default class AdminApi {
           return;
         }
       } else {
-        response.status(201).json({ id }).end();
+        response
+          .status(201)
+          .json({
+            id,
+            hash: await this.#database.getHash("CHARACTER", id),
+          })
+          .end();
       }
     } catch (e) {
       next(e);
@@ -459,7 +551,10 @@ export default class AdminApi {
       if (!result.success) {
         response.status(409).json({ error: result.message });
       } else {
-        response.status(201).json({ id: result.message });
+        response.status(201).json({
+          id: result.message,
+          hash: await this.#database.getHash("CATEGORY", result.message),
+        });
       }
     } catch (e) {
       next(e);
@@ -509,7 +604,13 @@ export default class AdminApi {
           return;
         }
       } else {
-        response.status(201).json({ id }).end();
+        response
+          .status(201)
+          .json({
+            id,
+            hash: await this.#database.getHash("CATEGORY", id),
+          })
+          .end();
       }
     } catch (e) {
       next(e);
