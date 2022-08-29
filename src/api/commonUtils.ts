@@ -66,11 +66,6 @@ export async function sendNotModified(
   //then test for the presence of the id
   let id = tryParseInteger(request.params.id);
   if (!etag || id === null) {
-    if (id === null) {
-      allowIfNotProd(
-        `sendNotModified middleware is invoked but it has no information to work with!!!! Faulting route=${request.route}`
-      );
-    }
     next();
     return;
   }

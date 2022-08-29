@@ -10,6 +10,7 @@ import AnimeApi from "./api/anime";
 import CharacterApi from "./api/characters";
 import { errorHandler } from "./api/commonUtils";
 import MangaApi from "./api/manga";
+import RawDataApi from "./api/raw";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import { LoginRoute } from "./authentication/routes";
 import JsonDatabase from "./database/jsonDatabase";
@@ -51,6 +52,7 @@ app.use(express.json());
 app.use("/anime", new AnimeApi(db).asApplication());
 app.use("/manga", new MangaApi(db).asApplication());
 app.use("/character", new CharacterApi(db).asApplication());
+app.use("/raw", new RawDataApi(db).asApplication());
 
 app.get("/", (_req: Request, res: Response): void => {
   res.send("Hello Typescript with Node.js!");
