@@ -35,7 +35,7 @@ export function defineVerifiedChain(
  * @returns The casted object or null on failure
  * @notes if the list is not present it act like an alias to the converter
  */
-export function castAndStripObject<T>(
+export function castAndStripObject<T extends {}>(
   object: any,
   converter: (e: any) => T | null
 ): T | null {

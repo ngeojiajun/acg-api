@@ -458,7 +458,8 @@ export default class JsonDatabase implements IDatabase {
         }
         const lhs = data[condition.key];
         const rhs = condition.rhs ?? another?.[condition.key];
-        if (lhs === undefined || rhs === undefined) {
+        //catch both null and undefined
+        if (lhs == null || rhs == null) {
           //when it is absent eval as false
           if (chaining === "AND") {
             return false;
