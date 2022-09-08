@@ -3,8 +3,8 @@
   "version": "0.0.3",
   "description": "The api to exchange ACG related info",
   "scripts": {
-    "test": "ts-node ./src/tests/index.ts",
-    "test-jest": "jest",
+    "integrity-test": "ts-node ./src/tests/index.ts",
+    "test": "jest",
     "start": "ts-node ./src/index.ts",
     "build": "npx tsc"
   },

@@ -1,18 +1,12 @@
 import { mkdtempSync, PathLike, rmSync } from "fs";
 import path from "path";
 import os from "os";
-import { CachedTests } from "./cached";
 import { IntegrityTest } from "./integrity_test";
-import { JsonDatabaseTests } from "./jsonDatabase";
 
 /**
- * The test engine for the project
+ * Tests which are not using JEST
  */
-const tests: ((_tmp: PathLike) => Promise<void>)[] = [
-  IntegrityTest,
-  CachedTests,
-  JsonDatabaseTests,
-];
+const tests: ((_tmp: PathLike) => Promise<void>)[] = [IntegrityTest];
 
 async function main() {
   //make the tmp dir

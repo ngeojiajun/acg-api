@@ -10,7 +10,7 @@ import { MangaEntryInternal } from "../definitions/manga.internal";
 import { computeHashForObject } from "../utilities/hashing";
 import path from "path";
 import os from "os";
-import { expectFail, expectSuccess } from "./common_utils";
+import { expectFail, expectSuccess } from "./common_utils_jest";
 
 /**
  * Static data for the test suite

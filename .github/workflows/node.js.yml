@@ -27,5 +27,9 @@ jobs:
           cache: "npm"
       - run: npm install
       - run: npm run build
-      - run: npm run test
-      - run: npm run test-jest
+      - name: Nuke off dists
+        run: rm -rf ./dist
+      - name: Run the unit tests
+        run: npm run test
+      - name: Check the integrity of data
+        run: npm run test-integrity
