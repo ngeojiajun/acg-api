@@ -10,6 +10,7 @@ import { MangaEntryInternal } from "../definitions/manga.internal";
 import { computeHashForObject } from "../utilities/hashing";
 import path from "path";
 import os from "os";
+import { expectFail, expectSuccess } from "./common_utils";
 
 /**
  * Static data for the test suite
@@ -158,19 +159,3 @@ describe("jsonDatabase engine", () => {
     }
   });
 });
-
-/**
- * Expect the result of an query is failed
- * @param status The status reported by the backend
- */
-function expectFail(status: Status): void {
-  expect(status.success).toBe(false);
-}
-
-/**
- * Expect the result of an query is succeeded
- * @param status The status reported by the backend
- */
-function expectSuccess(status: Status): void {
-  expect(status.success).toBe(true);
-}
