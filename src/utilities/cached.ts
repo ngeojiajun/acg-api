@@ -62,6 +62,7 @@ export function findEntry<T extends KeyedEntry>(
   let { cache, entries, hashes } = object;
   let index = cache[id];
   if (index !== undefined) {
+    hashes[id] = hashes[id] ?? computeHashForObject(entries[index]);
     return entries[index];
   }
   for (let i = 0; i < entries.length; i++) {
@@ -179,6 +180,7 @@ export function getHashOf<T extends KeyedEntry>(
   table: Cached<T>,
   id: KeyedEntry["id"]
 ): string | null {
+  console.log(table.hashes);
   if (table.hashes[id]) {
     return table.hashes[id];
   }
