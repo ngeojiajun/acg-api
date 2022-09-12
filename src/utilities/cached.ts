@@ -180,7 +180,6 @@ export function getHashOf<T extends KeyedEntry>(
   table: Cached<T>,
   id: KeyedEntry["id"]
 ): string | null {
-  console.log(table.hashes);
   if (table.hashes[id]) {
     return table.hashes[id];
   }
