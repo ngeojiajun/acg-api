@@ -25,6 +25,7 @@ import {
   neverCache,
   nonExistantRoute,
 } from "./commonUtils";
+import * as Logger from "../utilities/logging";
 
 /**
  * Contain routes for the administration use
@@ -100,10 +101,10 @@ export default class AdminApi {
       );
       app.use(errorHandler);
     } else {
-      console.warn(
+      Logger.warn(
         "The admin API is disabled as either the provider reported that the authentication is impossible"
       );
-      console.warn(
+      Logger.warn(
         "or it is disabled through DISABLE_ADMIN environment variable"
       );
     }

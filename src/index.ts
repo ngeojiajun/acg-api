@@ -14,6 +14,7 @@ import RawDataApi from "./api/raw";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import { LoginRoute } from "./authentication/routes";
 import JsonDatabase from "./database/jsonDatabase";
+import * as Logger from "./utilities/logging";
 /**
  * This file export nothing but instead patches the Vanila stuffs
  */
@@ -24,7 +25,7 @@ export const db: JsonDatabase = new JsonDatabase("./data/");
 
 //Check environment variables and disable saving when empheral flag is passed
 if (process.env.JSON_DB_EMPHERAL) {
-  console.warn(
+  Logger.warn(
     "Warning: opening database in empheral mode. Changes will not be saved"
   );
   db.shouldSaveWhenClose = false;
@@ -75,9 +76,9 @@ app.post(
 
 const initStart = performance.now();
 export const initDone = db.init().then(() => {
-  console.log(`Initialization done in ${performance.now() - initStart} ms`);
+  Logger.log(`Initialization done in ${performance.now() - initStart} ms`);
   return app.listen(PORT, (): void => {
-    console.log(`Server Running here 👉 http://localhost:${PORT}`);
+    Logger.log(`Server Running here 👉 http://localhost:${PORT}`);
   });
 });
 
