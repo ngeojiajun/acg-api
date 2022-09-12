@@ -2,6 +2,7 @@ import express, { Application, NextFunction, Request, Response } from "express";
 import { DatabaseTypes, IDatabase } from "../database/database";
 import { tryParseInteger } from "../utils";
 import { errorHandler, nonExistantRoute, sendNotModified } from "./commonUtils";
+import * as Logger from "../utilities/logging";
 
 /**
  * Special class of routes that return raw data
@@ -22,7 +23,7 @@ export default class RawDataApi {
     ];
     app.disable("x-powered-by");
     for (const table of tables) {
-      console.log(table);
+      Logger.log(table);
       app.get(`/${table.toLowerCase()}`, this.#listAllIds.bind(this, table));
       app.get(
         `/${table.toLowerCase()}/:id`,

@@ -14,17 +14,18 @@ import RawDataApi from "./api/raw";
 import BasicAuthenticationProider from "./authentication/auth_base";
 import { LoginRoute } from "./authentication/routes";
 import JsonDatabase from "./database/jsonDatabase";
+import * as Logger from "./utilities/logging";
 /**
  * This file export nothing but instead patches the Vanila stuffs
  */
 import "./utilities/prototype_patch";
 
 //load the data
-let db: JsonDatabase = new JsonDatabase("./data/");
+export const db: JsonDatabase = new JsonDatabase("./data/");
 
 //Check environment variables and disable saving when empheral flag is passed
 if (process.env.JSON_DB_EMPHERAL) {
-  console.warn(
+  Logger.warn(
     "Warning: opening database in empheral mode. Changes will not be saved"
   );
   db.shouldSaveWhenClose = false;
@@ -34,7 +35,7 @@ if (process.env.JSON_DB_EMPHERAL) {
 let auth: BasicAuthenticationProider = new BasicAuthenticationProider();
 auth.init();
 
-const app: Application = express();
+export const app: Application = express();
 const PORT = process.env.PORT || 8000;
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -74,10 +75,10 @@ app.post(
 );
 
 const initStart = performance.now();
-db.init().then(() => {
-  console.log(`Initialization done in ${performance.now() - initStart} ms`);
-  app.listen(PORT, (): void => {
-    console.log(`Server Running here 👉 http://localhost:${PORT}`);
+export const initDone = db.init().then(() => {
+  Logger.log(`Initialization done in ${performance.now() - initStart} ms`);
+  return app.listen(PORT, (): void => {
+    Logger.log(`Server Running here 👉 http://localhost:${PORT}`);
   });
 });
 

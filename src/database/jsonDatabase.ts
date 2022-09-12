@@ -69,6 +69,7 @@ import {
   MangaEntryInternal,
 } from "../definitions/manga.internal";
 import { ACGEntryInternal } from "../definitions/acg.internal";
+import * as Logger from "../utilities/logging";
 
 /**
  * Internal variable holding the locally parsed stuff
@@ -99,7 +100,7 @@ export default class JsonDatabase implements IDatabase {
   #database: InternalParsedMap;
   #mutex: Mutex;
   constructor(directory: string) {
-    console.warn("This class contains schema which is under heavy development");
+    Logger.warn("This class contains schema which is under heavy development");
     this.directory = directory;
     this.#database = {};
     //The read only function only modify the cache which are not critical
@@ -745,10 +746,10 @@ export default class JsonDatabase implements IDatabase {
     if (!this.shouldSaveWhenClose) return;
     let mutex_release = await this.#mutex.tryLock();
     try {
-      console.log("Closing db");
+      Logger.log("Closing db");
       //check the tables for the mutation, if it is there sync to FS
       if (this.#database.anime && this.#database.anime.mutated) {
-        console.log("Saving ANIME table.....");
+        Logger.log("Saving ANIME table.....");
         await this.#saveTable(
           this.#database.anime.entries,
           "animes.ndjson",
@@ -757,7 +758,7 @@ export default class JsonDatabase implements IDatabase {
         this.#database.anime.mutated = false;
       }
       if (this.#database.manga && this.#database.manga.mutated) {
-        console.log("Saving MANGA table.....");
+        Logger.log("Saving MANGA table.....");
         await this.#saveTable(
           this.#database.manga.entries,
           "mangas.ndjson",
@@ -766,7 +767,7 @@ export default class JsonDatabase implements IDatabase {
         this.#database.manga.mutated = false;
       }
       if (this.#database.characters && this.#database.characters.mutated) {
-        console.log("Saving CHARACTER table.....");
+        Logger.log("Saving CHARACTER table.....");
         await this.#saveTable(
           this.#database.characters.entries,
           "characters.ndjson",
@@ -775,7 +776,7 @@ export default class JsonDatabase implements IDatabase {
         this.#database.characters.mutated = false;
       }
       if (this.#database.categories && this.#database.categories.mutated) {
-        console.log("Saving CATEGORY table.....");
+        Logger.log("Saving CATEGORY table.....");
         await this.#saveTable(
           this.#database.categories.entries,
           "categories.ndjson",
@@ -784,7 +785,7 @@ export default class JsonDatabase implements IDatabase {
         this.#database.categories.mutated = false;
       }
       if (this.#database.person && this.#database.person.mutated) {
-        console.log("Saving PERSON table.....");
+        Logger.log("Saving PERSON table.....");
         await this.#saveTable(
           this.#database.person.entries,
           "persons.ndjson",
@@ -793,7 +794,7 @@ export default class JsonDatabase implements IDatabase {
         this.#database.person.mutated = false;
       }
     } finally {
-      console.log("Saved");
+      Logger.log("Saved");
       mutex_release();
     }
   }
@@ -856,7 +857,7 @@ export default class JsonDatabase implements IDatabase {
    */
   async #loadAndRegister(filename: string, type: DatabaseTypes) {
     if (!existsSync(filename)) {
-      console.warn(
+      Logger.warn(
         `${filename} not exists for initialization for ${type}! Initializing it as empty table instead!`
       );
       this.#validateTable(
@@ -970,7 +971,7 @@ export default class JsonDatabase implements IDatabase {
     validate_as: DatabaseTypes,
     new_table: boolean = false
   ) {
-    console.log(
+    Logger.log(
       `JSONDatabase: registering table ${validate_as} with schema version ${table.version}`
     );
     if (this.#getTable(validate_as)) {
@@ -985,38 +986,36 @@ export default class JsonDatabase implements IDatabase {
         )}). Decoding ${validate_as} v${table.version}`
       );
     } else if (status === TABLE_COMPATIBILITY_STATE.NEEDS_MIGRATION) {
-      console.log(
-        `JSONDatabase: performing migration for table ${validate_as}`
-      );
+      Logger.log(`JSONDatabase: performing migration for table ${validate_as}`);
       let parsed = migrate(table, validate_as);
       if (!parsed) {
         throw new Error("Migration failed");
       }
       switch (validate_as) {
         case "ANIME":
-          console.log(`Migrated to version ${ANIME_TABLE_VERSION}`);
+          Logger.log(`Migrated to version ${ANIME_TABLE_VERSION}`);
           this.#database.anime = makeCached(
             parsed as AnimeEntryInternal[],
             true
           );
           break;
         case "MANGA":
-          console.log(`Migrated to version ${MANGA_TABLE_VERSION}`);
+          Logger.log(`Migrated to version ${MANGA_TABLE_VERSION}`);
           this.#database.manga = makeCached(
             parsed as MangaEntryInternal[],
             true
           );
           break;
         case "CATEGORY":
-          console.log(`Migrated to version ${CATEGORY_TABLE_VERSION}`);
+          Logger.log(`Migrated to version ${CATEGORY_TABLE_VERSION}`);
           this.#database.categories = makeCached(parsed as Category[], true);
           break;
         case "CHARACTER":
-          console.log(`Migrated to version ${CHARACTER_TABLE_VERSION}`);
+          Logger.log(`Migrated to version ${CHARACTER_TABLE_VERSION}`);
           this.#database.characters = makeCached(parsed as Character[], true);
           break;
         case "PERSON":
-          console.log(`Migrated to version ${PERSON_TABLE_VERSION}`);
+          Logger.log(`Migrated to version ${PERSON_TABLE_VERSION}`);
           this.#database.person = makeCached(parsed as People[], true);
           break;
       }

@@ -1,5 +1,6 @@
 import { AuthProvider } from "./auth_provider";
 import * as Crypto from "crypto";
+import * as Logger from "../utilities/logging";
 
 type TokenInfo = {
   token: string;
@@ -22,7 +23,7 @@ export default class BasicAuthenticationProider implements AuthProvider {
     //try to initialize the authentication engine using the ADMIN_PASS environment variable
     if (process.env.ADMIN_PASS) {
       this.#mainPassword = process.env.ADMIN_PASS;
-      console.log("Enabling authentication backend");
+      Logger.log("Enabling authentication backend");
     }
   }
   async login(user: string, password: string) {
