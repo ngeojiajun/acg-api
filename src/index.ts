@@ -20,7 +20,7 @@ import JsonDatabase from "./database/jsonDatabase";
 import "./utilities/prototype_patch";
 
 //load the data
-let db: JsonDatabase = new JsonDatabase("./data/");
+export const db: JsonDatabase = new JsonDatabase("./data/");
 
 //Check environment variables and disable saving when empheral flag is passed
 if (process.env.JSON_DB_EMPHERAL) {
@@ -34,7 +34,7 @@ if (process.env.JSON_DB_EMPHERAL) {
 let auth: BasicAuthenticationProider = new BasicAuthenticationProider();
 auth.init();
 
-const app: Application = express();
+export const app: Application = express();
 const PORT = process.env.PORT || 8000;
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -74,9 +74,9 @@ app.post(
 );
 
 const initStart = performance.now();
-db.init().then(() => {
+export const initDone = db.init().then(() => {
   console.log(`Initialization done in ${performance.now() - initStart} ms`);
-  app.listen(PORT, (): void => {
+  return app.listen(PORT, (): void => {
     console.log(`Server Running here 👉 http://localhost:${PORT}`);
   });
 });
