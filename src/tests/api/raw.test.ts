@@ -25,19 +25,9 @@ describe("Raw Anime API", () => {
     db = _module.db;
     server = await _module.initDone;
   });
-  afterAll(() => {
-    db.close().then(() => server.close());
-  });
-  // it("Manga", async () => {
-  //   await request(app).get(list["MANGA"]).expect(200);
-  //   await expectExactResult(app, db, "MANGA", 1);
-  //   await expectExactResult(app, db, "MANGA", -1);
-  // });
-  // it("Anime", async () => {
-  //   await request(app).get(list["ANIME"]).expect(200);
-  //   await expectExactResult(app, db, "ANIME", 1);
-  //   await expectExactResult(app, db, "ANIME", -1);
-  // });
+  afterAll(() =>
+    Promise.all([db.close(), new Promise((_) => server.close(_))])
+  );
   for (const name of endpoints) {
     it(name.toLowerCase(), async () => {
       await request(app).get(list[name]).expect(200);
